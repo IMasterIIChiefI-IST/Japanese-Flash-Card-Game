@@ -1,0 +1,2892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>単語帳 — Vocabulary Drill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Zen+Maru+Gothic:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@500;700;900&family=M+PLUS+Rounded+1c:wght@500;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #d1c5a9;
+    --paper-deep: #E2D8C0;
+    --paper-line: rgba(33,29,26,0.08);
+    --ink: #211D1A;
+    --ink-soft: #6b6052;
+    --indigo: #2C4A6E;
+    --indigo-deep: #1d3450;
+    --hanko: #B23A2E;
+    --hanko-deep: #8f2c22;
+    --moss: #5C7A5E;
+    --amber: #BD8A3B;
+    --gray: #948C7E;
+    --font-display: 'Shippori Mincho', serif;
+    --font-body: 'Zen Maru Gothic', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-jp-content: 'Shippori Mincho', serif;
+    --color-hiragana: #4287f5;
+    --color-katakana: #f5c842;
+    --color-kanji: #f54242;
+    --radius: 14px;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    overflow-x: hidden;
+    font-family: var(--font-body);
+    color: var(--ink);
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, var(--paper-line) 27px, var(--paper-line) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, var(--paper-line) 27px, var(--paper-line) 28px),
+      var(--paper);
+    min-height: 100vh;
+    padding: 28px 16px 60px;
+  }
+
+  .wrap{ max-width: 720px; margin: 0 auto; }
+
+  /* ---------- Header ---------- */
+  header.app-header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 14px;
+    margin-bottom: 22px;
+  }
+  .title-block h1{
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 2.1rem;
+    margin: 0 0 2px;
+    letter-spacing: 0.02em;
+  }
+  .title-block p{
+    margin:0;
+    color: var(--ink-soft);
+    font-size: 0.88rem;
+  }
+
+  .ledger{
+    display:flex;
+    gap: 14px;
+    font-family: var(--font-mono);
+  }
+  .ledger-item{
+    text-align:center;
+    min-width: 52px;
+  }
+  .ledger-item .n{
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height:1;
+  }
+  .ledger-item .lab{
+    font-family: var(--font-body);
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-top: 3px;
+  }
+  .ledger-item.new .n{ color: var(--gray); }
+  .ledger-item.learning .n{ color: var(--amber); }
+  .ledger-item.known .n{ color: var(--moss); }
+  .ledger-item.failing .n{ color: var(--hanko); }
+
+  /* ---------- Panels ---------- */
+  .panel{
+    background: var(--paper-deep);
+    border: 1px solid var(--paper-line);
+    border-radius: var(--radius);
+    padding: 22px 22px 26px;
+    box-shadow: 0 1px 0 rgba(33,29,26,0.04);
+    margin-bottom: 18px;
+  }
+  .panel h2{
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    margin: 0 0 12px;
+    display:flex;
+    align-items:center;
+    gap: 8px;
+  }
+  .panel h2 .eyebrow{
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--ink-soft);
+    border: 1px solid var(--ink-soft);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+
+  .check-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 8px 14px;
+  }
+  label.check{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    font-size: 0.88rem;
+    cursor:pointer;
+    user-select:none;
+  }
+  label.check input[type="checkbox"]{
+    width: 17px; height:17px;
+    accent-color: var(--indigo);
+    cursor:pointer;
+  }
+  label.check.all-cat{
+    font-weight: 700;
+    border-bottom: 1px dashed var(--paper-line);
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    grid-column: 1 / -1;
+  }
+
+  label.easy-toggle{
+    display:flex; align-items:center; gap: 9px;
+    font-size: 0.88rem; cursor:pointer; user-select:none;
+  }
+  label.easy-toggle input{ width:17px; height:17px; accent-color: var(--indigo); cursor:pointer; }
+
+  .card-hint{
+	font-size: 1rem;
+	font-family: var(--font-mono);
+	color: var(--ink-soft);
+	margin-bottom: 12px;
+	min-height: 1.2em;
+	text-align: center;
+  }
+
+  .mode-list{ display:flex; flex-direction: column; gap: 8px; }
+  label.mode-row{
+    display:flex; align-items:center; gap: 10px;
+    font-size: 0.92rem; cursor:pointer; user-select:none;
+    padding: 6px 4px;
+    border-radius: 8px;
+  }
+  label.mode-row:hover{ background: rgba(44,74,110,0.06); }
+  label.mode-row input{ width:17px; height:17px; accent-color: var(--indigo); cursor:pointer; }
+  .mode-row .jp{ font-family: var(--font-display); font-weight:700; }
+  .mode-row .arrow{ color: var(--ink-soft); }
+
+  .btn{
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 0.95rem;
+    border: none;
+    border-radius: 10px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+  .btn:active{ transform: translateY(1px); }
+  .btn:focus-visible{ outline: 3px solid var(--indigo); outline-offset: 2px; }
+  .btn-primary{
+    background: var(--indigo);
+    color: #F4F0E6;
+    width: 100%;
+    margin-top: 8px;
+    box-shadow: 0 3px 0 var(--indigo-deep);
+  }
+  .btn-primary:active{ box-shadow: 0 1px 0 var(--indigo-deep); }
+  .btn-primary:disabled{ background: var(--gray); box-shadow:none; cursor:not-allowed; }
+  .btn-ghost{
+    background: transparent;
+    border: 1px solid var(--ink-soft);
+    color: var(--ink-soft);
+    padding: 7px 14px;
+    font-size: 0.78rem;
+  }
+  .error-msg{
+    color: var(--hanko);
+    font-size: 0.82rem;
+    margin-top: 8px;
+    min-height: 1.1em;
+  }
+
+  /* ---------- Quiz screen ---------- */
+  #quiz-screen{ display:none; }
+  .quiz-topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 14px; flex-wrap: wrap; gap: 8px;
+  }
+  .pill{
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    background: var(--paper-deep);
+    border: 1px solid var(--paper-line);
+    border-radius: 100px;
+    padding: 4px 11px;
+    color: var(--ink-soft);
+  }
+  .session-tally{
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+  .session-tally .ok{ color: var(--moss); font-weight:700; }
+  .session-tally .no{ color: var(--hanko); font-weight:700; }
+
+  .card{
+    position: relative;
+    background: var(--paper-deep);
+    border: 1px solid var(--paper-line);
+    border-radius: 18px;
+    min-height: 260px;
+    display:flex;
+    flex-direction: column;
+    align-items:center;
+    justify-content:center;
+    padding: 30px 20px;
+    overflow: hidden;
+  }
+  .card-cat{
+    position:absolute; top:14px; left:18px;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--ink-soft);
+    letter-spacing: 0.03em;
+  }
+  .card-mode{
+    position:absolute; top:14px; right:18px;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--ink-soft);
+  }
+  .card-prompt{
+    font-family: var(--font-jp-content);
+    font-weight: 700;
+    font-size: clamp(1.8rem, 6vw, 3rem);
+    text-align:center;
+    line-height: 1.25;
+    word-break: break-word;
+    max-width: 100%;
+  }
+  .jp-hira{ color: var(--color-hiragana); }
+  .jp-kata{ color: var(--color-katakana); }
+  .jp-kanji{ color: var(--color-kanji); }
+  .card-status{
+    position:absolute; bottom:14px; left:18px;
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    display:flex; align-items:center; gap:6px;
+  }
+  .status-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .status-dot.new{ background: var(--gray); }
+  .status-dot.learning{ background: var(--amber); }
+  .status-dot.known{ background: var(--moss); }
+  .status-dot.failing{ background: var(--hanko); }
+
+  .hanko-stamp{
+    position:absolute;
+    width: 92px; height: 92px;
+    border: 5px solid var(--hanko);
+    border-radius: 10px;
+    color: var(--hanko);
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 2.6rem;
+    display:flex; align-items:center; justify-content:center;
+    transform: rotate(-12deg) scale(0);
+    opacity: 0;
+    pointer-events:none;
+    right: 26px;
+    bottom: 22px;
+  }
+  .hanko-stamp.show.correct{
+    border-color: var(--moss);
+    color: var(--moss);
+    animation: stamp-in 0.32s ease-out forwards;
+  }
+  .hanko-stamp.show.wrong{
+    border-color: var(--hanko);
+    color: var(--hanko);
+    animation: stamp-in 0.32s ease-out forwards;
+  }
+  @keyframes stamp-in{
+    0%{ transform: rotate(-12deg) scale(2.2); opacity:0; }
+    60%{ opacity: 1; }
+    100%{ transform: rotate(-12deg) scale(1); opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .hanko-stamp.show.correct, .hanko-stamp.show.wrong{ animation: none; transform: rotate(-12deg) scale(1); opacity:1; }
+  }
+
+  .answer-row{
+    margin-top: 18px;
+    display:flex;
+    gap: 10px;
+  }
+  .answer-row input[type="text"]{
+    font-family: var(--font-body);
+    font-size: 1rem;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--ink-soft);
+    background: var(--paper);
+    color: var(--ink);
+    flex: 1;
+    min-width: 0;
+  }
+  .answer-row input[type="text"]:focus-visible{
+    outline: 3px solid var(--indigo);
+    outline-offset: 1px;
+  }
+  .answer-row input[disabled]{ opacity: 0.7; }
+
+  .feedback-area{
+    margin-top: 16px;
+    min-height: 64px;
+    text-align:center;
+  }
+  .feedback-line{
+    font-size: 0.95rem;
+  }
+  .feedback-line.correct{ color: var(--moss); font-weight:700; }
+  .feedback-line.wrong{ color: var(--hanko); font-weight:700; }
+  .feedback-answer{
+    margin-top: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+  .feedback-answer b{ color: var(--ink); }
+
+  .quiz-actions{
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+    margin-top: 22px;
+  }
+
+  footer.app-footer{
+    text-align:center;
+    margin-top: 30px;
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+  }
+  footer.app-footer button{
+    background:none; border:none; color: var(--hanko);
+    text-decoration: underline; cursor:pointer; font-size: 0.76rem; font-family: var(--font-body);
+  }
+  footer.app-footer button:focus-visible{ outline: 2px solid var(--indigo); }
+
+  @media (max-width: 480px){
+    .ledger{ gap: 8px; }
+    .ledger-item{ min-width: 44px; }
+    .panel{ padding: 16px; }
+  }
+
+  /* ---------- App tabs ---------- */
+  nav.app-tabs{
+    display:flex;
+    gap: 6px;
+    margin-bottom: 18px;
+  }
+  nav.app-tabs button{
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 0.85rem;
+    background: transparent;
+    border: 1.5px solid var(--paper-line);
+    border-radius: 100px;
+    padding: 8px 16px;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  nav.app-tabs button .jp{ font-family: var(--font-display); margin-right: 4px; }
+  nav.app-tabs button.active{
+    background: var(--indigo);
+    border-color: var(--indigo);
+    color: #F4F0E6;
+  }
+  nav.app-tabs button:focus-visible{ outline: 3px solid var(--indigo); outline-offset: 2px; }
+
+  /* ---------- Display settings (global: font + script colors) ---------- */
+  .display-panel{
+    display:flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 18px 28px;
+  }
+  .display-field{
+    display:flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .display-field > span{
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    letter-spacing: 0.02em;
+  }
+  .display-field select{
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1.5px solid var(--ink-soft);
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    min-width: 200px;
+  }
+  .display-colors{
+    display:flex;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .color-field{
+    display:flex;
+    flex-direction: column;
+    align-items:center;
+    gap: 6px;
+  }
+  .color-field span{
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+  }
+  .color-field input[type="color"]{
+    width: 40px; height: 32px;
+    border: 1.5px solid var(--paper-line);
+    border-radius: 8px;
+    padding: 2px;
+    background: var(--paper);
+    cursor: pointer;
+  }
+  .display-preview{
+    font-family: var(--font-jp-content);
+    font-weight: 700;
+    font-size: 1.6rem;
+    display:flex;
+    align-items:center;
+    gap: 2px;
+  }
+
+  /* ---------- Kana Ninja: setup ---------- */
+  #ninja-setup-screen{ display:none; }
+  .script-toggle-grid{
+    display:flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  label.script-pill{
+    display:flex; align-items:center; gap: 8px;
+    border: 1.5px solid var(--paper-line);
+    border-radius: 100px;
+    padding: 9px 16px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.9rem;
+  }
+  label.script-pill input{ width:16px; height:16px; accent-color: var(--hanko); cursor:pointer; }
+  label.script-pill .jp{ font-family: var(--font-display); font-weight:700; }
+
+  /* ---------- Kana Ninja: game ---------- */
+  #ninja-game-screen{ display:none; }
+  .ninja-hud{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+  }
+  .ninja-lives{ font-size: 1.05rem; letter-spacing: 3px; }
+  .ninja-lives.infinite{
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+    color: var(--moss);
+    font-weight: 700;
+  }
+  .ninja-lives .lost{ opacity: 0.25; }
+  .ninja-score{
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+  }
+  .ninja-score .best{ color: var(--ink-soft); font-size: 0.75rem; margin-left: 8px; }
+
+  .ninja-arena{
+    position: relative;
+    background:
+      linear-gradient(180deg, rgba(33,29,26,0.03), rgba(33,29,26,0.07)),
+      var(--paper-deep);
+    border: 1px solid var(--paper-line);
+    border-radius: 18px;
+    height: clamp(320px, 62vh, 600px);
+    overflow: hidden;
+  }
+  .ninja-arena::after{
+    content:'';
+    position:absolute; top:0; bottom:0; left:0;
+    width: 3px;
+    background: var(--hanko);
+    opacity: 0.35;
+  }
+  .ninja-arena::before{
+    content:'';
+    position:absolute; top:0; bottom:0; right:0;
+    width: 3px;
+    background: var(--hanko);
+    opacity: 0.35;
+    z-index: 1;
+  }
+
+  .ninja-hint-marker{
+    position:absolute;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    border-left: 2px dashed var(--indigo);
+    opacity: 0;
+    pointer-events:none;
+    z-index: 2;
+    transition: opacity 0.16s ease;
+  }
+  .ninja-hint-marker.show{ opacity: 0.55; }
+  .ninja-hint-marker span{
+    position:absolute;
+    top: 10px;
+    left: 7px;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--indigo);
+    background: var(--paper);
+    border: 1px solid rgba(44,74,110,0.25);
+    border-radius: 999px;
+    padding: 2px 7px;
+    white-space: nowrap;
+  }
+
+  .kana-item{
+    position:absolute;
+    top: 0;
+    left: -54px;
+    display:flex;
+    flex-direction: column;
+    align-items:center;
+    gap: 2px;
+    transform: translate(-50%, -50%);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 3;
+  }
+  .kana-item .glyph{
+    font-family: var(--font-jp-content);
+    font-weight: 700;
+    font-size: 2.1rem;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1.5px solid var(--paper-line);
+    border-radius: 10px;
+    width: 56px; height: 56px;
+    display:flex; align-items:center; justify-content:center;
+    white-space: nowrap;
+    box-shadow: 0 2px 0 rgba(33,29,26,0.08);
+  }
+  .kana-item .glyph.wide{
+    width: auto;
+    min-width: 56px;
+    padding: 0 8px;
+    font-size: 1.5rem;
+  }
+  .kana-item .hint{
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--ink-soft);
+    background: var(--paper);
+    border-radius: 4px;
+    padding: 1px 5px;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .kana-item.hinted .hint{ opacity: 1; }
+  .kana-item.sliced{
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.3) rotate(12deg);
+  }
+  .kana-item.missed .glyph{
+    border-color: var(--hanko);
+    color: var(--hanko);
+  }
+
+  .ninja-answer-row{
+    margin-top: 16px;
+    display:flex;
+    gap: 10px;
+  }
+  .ninja-answer-row input[type="text"]{
+    font-family: var(--font-mono);
+    font-size: 1.05rem;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--ink-soft);
+    background: var(--paper);
+    color: var(--ink);
+    flex: 1;
+    min-width: 0;
+  }
+  .ninja-answer-row input[type="text"]:focus-visible{
+    outline: 3px solid var(--indigo);
+    outline-offset: 1px;
+  }
+
+  .ninja-overlay{
+    position:absolute; inset:0;
+    z-index: 5;
+    background: rgba(237,230,214,0.96);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap: 10px;
+    text-align:center;
+    padding: 20px;
+  }
+  .ninja-overlay h3{
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    margin: 0;
+  }
+  .ninja-overlay .final-score{
+    font-family: var(--font-mono);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--hanko);
+  }
+  .ninja-overlay .best-note{
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+  }
+  .ninja-overlay-actions{ display:flex; gap: 10px; margin-top: 6px; }
+
+  /* ---------- Kana Ninja: sliders ---------- */
+  .slider-row{ margin: 14px 0; }
+  .slider-row-label{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size: 0.88rem;
+    margin-bottom: 6px;
+  }
+  .slider-value{
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--hanko);
+  }
+  .slider-row input[type="range"]{
+    width: 100%;
+    accent-color: var(--indigo);
+    cursor: pointer;
+  }
+  .slider-row input[type="range"]:disabled{ opacity: 0.4; cursor:not-allowed; }
+  .slider-row-ends{
+    display:flex; justify-content:space-between;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+
+  /* ---------- Kana Ninja: full-bleed arena ---------- */
+  .ninja-arena{
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+  }
+
+  @media (max-width: 480px){
+    .ninja-arena{ height: clamp(260px, 58vh, 460px); }
+    .kana-item .glyph{ width: 46px; height: 46px; font-size: 1.7rem; }
+    .kana-item .glyph.wide{ width: auto; min-width: 46px; padding: 0 6px; font-size: 1.2rem; }
+  }
+
+
+  /* ---------- Vocabulary source + word library ---------- */
+  .data-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap: 10px;
+    align-items:center;
+  }
+  .file-btn input[type="file"]{ display:none; }
+  .vocab-status{
+    margin-top: 10px;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    line-height: 1.4;
+  }
+  .vocab-status strong{ color: var(--ink); }
+
+  .progress-help{
+    margin-top: 6px;
+    font-size: 0.76rem;
+    color: var(--ink-soft);
+    line-height: 1.45;
+  }
+  .library-toolbar{
+    display:grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(150px, 210px);
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .library-toolbar input,
+  .library-toolbar select,
+  .add-word-grid input,
+  .add-word-grid select,
+  .add-word-grid textarea{
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1.5px solid var(--ink-soft);
+    border-radius: 8px;
+    padding: 9px 10px;
+    min-width: 0;
+  }
+  .word-list{
+    max-height: 270px;
+    overflow:auto;
+    border: 1px solid var(--paper-line);
+    border-radius: 10px;
+    background: rgba(244,240,230,0.35);
+  }
+  .word-list table{
+    width:100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+  .word-list th,
+  .word-list td{
+    text-align:left;
+    border-bottom: 1px solid var(--paper-line);
+    padding: 7px 8px;
+    vertical-align: top;
+  }
+  .word-list th{
+    position: sticky;
+    top:0;
+    z-index:1;
+    background: var(--paper-deep);
+    font-family: var(--font-mono);
+    color: var(--ink-soft);
+    font-weight: 700;
+  }
+  .word-list .jp-cell{ font-family: var(--font-jp-content); font-weight:700; font-size: 0.95rem; }
+  .word-list .empty{ padding: 18px; text-align:center; color: var(--ink-soft); }
+  .status-mini{
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    border-radius: 100px;
+    padding: 2px 7px;
+    background: rgba(33,29,26,0.08);
+    white-space: nowrap;
+  }
+  details.add-word-box{
+    margin-top: 14px;
+  }
+  details.add-word-box summary{
+    cursor:pointer;
+    font-weight: 700;
+    color: var(--indigo);
+    margin-bottom: 10px;
+  }
+  .add-word-grid{
+    display:grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .add-word-grid label{
+    display:flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 0.76rem;
+    color: var(--ink-soft);
+  }
+  .add-word-grid label.full{ grid-column: 1 / -1; }
+  .add-word-grid textarea{ min-height: 62px; resize: vertical; }
+  .add-word-actions{
+    display:flex;
+    gap: 10px;
+    align-items:center;
+    margin-top: 12px;
+    flex-wrap:wrap;
+  }
+
+  /* ---------- Kana Dictionary ---------- */
+  #kana-dictionary-screen{ display:none; }
+  .kana-dictionary-intro{
+    color: var(--ink-soft);
+    font-size: 0.88rem;
+    margin: 0 0 14px;
+  }
+  .kana-section{ margin-top: 18px; }
+  .kana-section:first-child{ margin-top: 0; }
+  .kana-section h3{
+    font-family: var(--font-display);
+    font-size: 1rem;
+    margin: 0 0 8px;
+    display:flex;
+    align-items:center;
+    gap: 8px;
+  }
+  .kana-grid-scroll{
+    overflow-x: auto;
+    border: 1px solid var(--paper-line);
+    border-radius: 12px;
+    background: rgba(255,255,255,0.08);
+  }
+  table.kana-grid{
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 560px;
+  }
+  table.kana-grid th,
+  table.kana-grid td{
+    border-bottom: 1px solid var(--paper-line);
+    border-right: 1px solid var(--paper-line);
+    text-align:center;
+    padding: 8px 7px;
+    vertical-align: middle;
+  }
+  table.kana-grid tr:last-child td,
+  table.kana-grid tr:last-child th{ border-bottom: none; }
+  table.kana-grid th:last-child,
+  table.kana-grid td:last-child{ border-right: none; }
+  table.kana-grid th{
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    background: rgba(33,29,26,0.04);
+    white-space: nowrap;
+  }
+  table.kana-grid th.row-head{ width: 78px; }
+  .kana-cell{ min-height: 52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap: 3px; }
+  .kana-cell.empty{ color: var(--ink-soft); opacity: 0.35; font-family: var(--font-mono); }
+  .kana-pair{
+    display:flex;
+    align-items:baseline;
+    justify-content:center;
+    gap: 8px;
+    font-family: var(--font-jp-content);
+    font-weight: 800;
+    line-height: 1;
+  }
+  .kana-pair .hira,
+  .kana-pair .kata{ font-size: 1.35rem; }
+  .kana-romaji{
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--ink-soft);
+  }
+  .kana-legend{
+    display:flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin-top: 10px;
+  }
+  .kana-legend b{ color: var(--ink); }
+  @media (max-width: 560px){
+    table.kana-grid{ min-width: 520px; }
+    .kana-pair .hira,
+    .kana-pair .kata{ font-size: 1.18rem; }
+  }
+
+  @media (max-width: 560px){
+    .library-toolbar,
+    .add-word-grid{ grid-template-columns: 1fr; }
+  }
+
+</style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="app-header">
+    <div class="title-block">
+      <h1>単語帳</h1>
+      <p>Vocabulary drill — typed recall, with a memory that tracks what's actually sticking</p>
+    </div>
+    <div class="ledger" id="ledger"></div>
+  </header>
+
+  <nav class="app-tabs">
+    <button id="tab-vocab" class="active"><span class="jp">単語帳</span>Vocab Drill</button>
+    <button id="tab-ninja"><span class="jp">かなニンジャ</span>Kana Ninja</button>
+    <button id="tab-kana-dictionary"><span class="jp">かな表</span>Kana Dictionary</button>
+  </nav>
+
+  <div class="panel">
+    <h2><span class="eyebrow">表示</span> Display <span style="font-weight:400; font-size:0.72rem; color:var(--ink-soft);">(applies everywhere)</span></h2>
+    <div class="display-panel">
+      <label class="display-field">
+        <span>Japanese font</span>
+        <select id="jp-font-select">
+          <option value="'Shippori Mincho', serif">Shippori Mincho — serif</option>
+          <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic — rounded</option>
+          <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+          <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+          <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+        </select>
+      </label>
+      <div class="display-colors">
+        <label class="color-field">
+          <span>Hiragana</span>
+          <input type="color" id="color-hiragana" value="#211D1A">
+        </label>
+        <label class="color-field">
+          <span>Katakana</span>
+          <input type="color" id="color-katakana" value="#2C4A6E">
+        </label>
+        <label class="color-field">
+          <span>Kanji</span>
+          <input type="color" id="color-kanji" value="#B23A2E">
+        </label>
+      </div>
+      <div class="display-preview" id="display-preview">
+        <span class="jp-hira">ひら</span><span class="jp-kata">カタ</span><span class="jp-kanji">漢字</span>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===================== KANA DICTIONARY ===================== -->
+  <div id="kana-dictionary-screen">
+    <div class="panel">
+      <h2><span class="eyebrow">かな表</span> Kana Dictionary</h2>
+      <p class="kana-dictionary-intro">A common kana chart layout. Each box shows <strong>hiragana</strong>, <strong>katakana</strong>, and the matching romaji reading.</p>
+      <div id="kana-dictionary-content"></div>
+      <div class="kana-legend">
+        <span><b>Left:</b> hiragana</span>
+        <span><b>Right:</b> katakana</span>
+        <span><b>Bottom:</b> romaji</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== KANA NINJA: SETUP ===================== -->
+  <div id="ninja-setup-screen">
+    <div class="panel">
+      <h2><span class="eyebrow">範囲</span> Script</h2>
+      <div class="script-toggle-grid">
+        <label class="script-pill"><input type="checkbox" id="ninja-hiragana" checked> <span class="jp">ひらがな</span> Hiragana</label>
+        <label class="script-pill"><input type="checkbox" id="ninja-katakana" checked> <span class="jp">カタカナ</span> Katakana</label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="eyebrow">種類</span> Kana groups</h2>
+      <div class="script-toggle-grid">
+        <label class="script-pill"><input type="checkbox" id="ninja-group-base" checked> Base</label>
+        <label class="script-pill"><input type="checkbox" id="ninja-group-dakuten" checked> Dakuten + handakuten</label>
+        <label class="script-pill"><input type="checkbox" id="ninja-group-yoon" checked> Yōon <span class="jp">きゃ</span></label>
+        <label class="script-pill"><input type="checkbox" id="ninja-group-sokuon" checked> Sokuon <span class="jp">っか</span></label>
+      </div>
+      <div class="progress-help">Sokuon uses small っ/ッ combinations such as <span class="jp">っか</span> → kka and <span class="jp">ッチ</span> → cchi.</div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="eyebrow">設定</span> Options</h2>
+
+      <div class="slider-row">
+        <div class="slider-row-label">
+          <span>Speed</span>
+          <span class="slider-value" id="ninja-speed-value">2</span>
+        </div>
+        <input type="range" id="ninja-speed-slider" min="1" max="5" step="1" value="2">
+        <div class="slider-row-ends"><span>Slow</span><span>Fast</span></div>
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-row-label">
+          <span>Rows (lanes)</span>
+          <span class="slider-value" id="ninja-columns-value">3</span>
+        </div>
+        <input type="range" id="ninja-columns-slider" min="1" max="6" step="1" value="3">
+        <div class="slider-row-ends"><span>Fewer, taller</span><span>More, shorter</span></div>
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-row-label">
+          <span>Max kana per row</span>
+          <span class="slider-value" id="ninja-percol-value">2</span>
+        </div>
+        <input type="range" id="ninja-percol-slider" min="1" max="5" step="1" value="2">
+        <div class="slider-row-ends"><span>1 at a time</span><span>Stacked</span></div>
+      </div>
+
+      <label class="check easy-toggle">
+        <input type="checkbox" id="ninja-easy-mode">
+        Show a romaji hint as the kana slides
+      </label>
+
+      <label class="check easy-toggle">
+        <input type="checkbox" id="ninja-infinite-lives">
+        Infinite lives — missed kana will not end the run
+      </label>
+
+      <div class="slider-row" id="ninja-hint-row">
+        <div class="slider-row-label">
+          <span>Hint appears at</span>
+          <span class="slider-value" id="ninja-hint-value">50%</span>
+        </div>
+        <input type="range" id="ninja-hint-slider" min="0" max="100" step="5" value="50" disabled>
+        <div class="slider-row-ends"><span>Start (always on)</span><span>End (last second)</span></div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="ninja-begin-btn">スタート — Start slicing</button>
+    <div class="error-msg" id="ninja-setup-error"></div>
+  </div>
+
+  <!-- ===================== KANA NINJA: GAME ===================== -->
+  <div id="ninja-game-screen">
+    <div class="ninja-hud">
+      <span class="ninja-lives" id="ninja-lives"></span>
+      <span class="ninja-score" id="ninja-score-display">Score: 0<span class="best" id="ninja-best-display"></span></span>
+      <button class="btn-ghost btn" id="ninja-change-settings-btn">← Change settings</button>
+    </div>
+
+    <div class="ninja-arena" id="ninja-arena">
+      <div class="ninja-hint-marker" id="ninja-hint-marker"><span>romaji hint starts</span></div>
+      <div class="ninja-overlay" id="ninja-overlay" style="display:none;">
+        <h3 id="ninja-overlay-title">道場破れたり — Game Over</h3>
+        <div class="final-score" id="ninja-final-score">0</div>
+        <div class="best-note" id="ninja-best-note"></div>
+        <div class="ninja-overlay-actions">
+          <button class="btn btn-primary" id="ninja-replay-btn" style="margin-top:0;">もう一度 — Play again</button>
+          <button class="btn-ghost btn" id="ninja-back-btn">← Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ninja-answer-row">
+      <input type="text" id="ninja-answer-input" placeholder="Type the rōmaji…" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button class="btn btn-primary" id="ninja-slice-btn" style="width:auto; margin-top:0;">Slice</button>
+    </div>
+  </div>
+
+  <!-- ===================== SETUP SCREEN ===================== -->
+  <div id="setup-screen">
+
+    <div class="panel" id="vocab-source-panel">
+      <h2><span class="eyebrow">データ</span> Vocabulary source</h2>
+      <div class="data-actions">
+        <label class="btn btn-ghost file-btn" for="excel-file-input">Load Excel file
+          <input type="file" id="excel-file-input" accept=".xlsx,.xls">
+        </label>
+        <button class="btn btn-ghost" id="auto-load-excel-btn" type="button">Try same-folder Excel</button>
+        <button class="btn btn-ghost" id="export-excel-btn" type="button">Export updated Excel</button>
+      </div>
+      <div class="vocab-status" id="vocab-source-status">No vocabulary loaded yet.</div>
+    </div>
+
+    <div class="panel" id="progress-file-panel">
+      <h2><span class="eyebrow">保存</span> Progress file</h2>
+      <div class="data-actions">
+        <button class="btn btn-ghost" id="progress-connect-folder-btn" type="button">Connect save folder</button>
+        <label class="btn btn-ghost file-btn" for="progress-load-file-input">Load progress file
+          <input type="file" id="progress-load-file-input" accept=".json,application/json">
+        </label>
+        <button class="btn btn-ghost" id="progress-save-file-btn" type="button">Save progress file</button>
+      </div>
+      <div class="vocab-status" id="progress-file-status">Progress saves in this browser. Connect a folder to also keep <strong>japanese_flashcards_progress.json</strong> beside the app.</div>
+      <div class="progress-help">Use <strong>Connect save folder</strong> once, then the app auto-updates the JSON file after each answer. If your browser blocks folder access, use <strong>Save progress file</strong> and <strong>Load progress file</strong> manually.</div>
+    </div>
+
+    <div class="panel" id="word-library-panel">
+      <h2><span class="eyebrow">単語</span> Browse / add words</h2>
+      <div class="library-toolbar">
+        <input type="search" id="word-search" placeholder="Search English, kana, kanji, romaji, category…">
+        <select id="word-status-filter" aria-label="Filter words by learning status">
+          <option value="known">Known words</option>
+          <option value="all">All words</option>
+          <option value="new">New</option>
+          <option value="learning">Learning</option>
+          <option value="failing">Failing</option>
+        </select>
+      </div>
+      <div class="word-list" id="word-list"><div class="empty">Load an Excel file to browse words.</div></div>
+
+      <details class="add-word-box">
+        <summary>＋ Add a new word</summary>
+        <form id="add-word-form">
+          <div class="add-word-grid">
+            <label>Category
+              <input id="add-word-category" list="category-options" required placeholder="e.g. Food & drinks">
+              <datalist id="category-options"></datalist>
+            </label>
+            <label>English
+              <input id="add-word-english" required placeholder="e.g. apple">
+            </label>
+            <label>Kana (hiragana/katakana)
+              <input id="add-word-kana" required placeholder="りんご">
+            </label>
+            <label>Kana script
+              <select id="add-word-script">
+                <option value="hiragana">hiragana</option>
+                <option value="katakana">katakana</option>
+                <option value="mixed">mixed</option>
+              </select>
+            </label>
+            <label>Kanji / standard form
+              <input id="add-word-kanji" placeholder="林檎">
+            </label>
+            <label>Kanji + kana form
+              <input id="add-word-kanji-kana" placeholder="林檎（りんご）">
+            </label>
+            <label>Romaji pronunciation
+              <input id="add-word-romaji" required placeholder="ringo">
+            </label>
+            <label>Source(s)
+              <input id="add-word-source" placeholder="DDMMYYYY - v2.0">
+            </label>
+            <label class="full">Notes
+              <textarea id="add-word-notes" placeholder="Optional notes"></textarea>
+            </label>
+          </div>
+          <div class="add-word-actions">
+            <button class="btn btn-primary" id="add-word-btn" type="submit" style="width:auto; margin-top:0;">Add word</button>
+            <span class="vocab-status" id="add-word-status" style="margin-top:0;"></span>
+          </div>
+        </form>
+      </details>
+    </div>
+    <div class="panel">
+      <h2><span class="eyebrow">範囲</span> Categories</h2>
+      <div class="check-grid" id="category-grid"></div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="eyebrow">方向</span> Modes — pick one or more</h2>
+      <div class="mode-list" id="mode-list"></div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="eyebrow">設定</span> Options</h2>
+      <label class="check easy-toggle">
+        <input type="checkbox" id="easy-mode">
+        Easy mode — show romaji hint above 漢字 and カタカナ prompts
+      </label>
+    </div>
+
+    <button class="btn btn-primary" id="begin-btn">練習開始 — Begin practice</button>
+    <div class="error-msg" id="setup-error"></div>
+  </div>
+
+  <!-- ===================== QUIZ SCREEN ===================== -->
+  <div id="quiz-screen">
+    <div class="quiz-topbar">
+      <span class="pill" id="session-cat-pill">All categories</span>
+      <span class="session-tally" id="session-tally">Today: <span class="ok">0</span> ✓ / <span class="no">0</span> ✕</span>
+      <button class="btn-ghost btn" id="change-settings-btn">← Change settings</button>
+    </div>
+
+    <div class="card" id="card">
+      <span class="card-cat" id="card-cat"></span>
+      <span class="card-mode" id="card-mode"></span>
+      <div class="card-hint" id="card-hint"></div>
+      <div class="card-prompt" id="card-prompt"></div>
+      <div class="hanko-stamp" id="hanko"></div>
+      <div class="card-status" id="card-status">
+        <span class="status-dot new"></span><span id="card-status-text">new</span>
+      </div>
+    </div>
+
+    <div class="answer-row">
+      <input type="text" id="answer-input" placeholder="Type your answer…" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button class="btn btn-primary" id="check-btn" style="width:auto; margin-top:0;">Check</button>
+    </div>
+
+    <div class="feedback-area" id="feedback-area"></div>
+  </div>
+
+  <footer class="app-footer">
+    Vocabulary saves in this browser. Progress can also save to japanese_flashcards_progress.json. <button id="reset-btn">Reset all progress</button>
+  </footer>
+
+</div>
+
+<script>
+const GAME_VERSION = 'v2.0';
+const DEFAULT_EXCEL_FILE = 'japanese_vocabulary_by_category.xlsx';
+const VOCAB_STORAGE_KEY = 'flashcard-vocab-excel-v2';
+const PROGRESS_STORAGE_KEY = 'flashcard-progress';
+const PROGRESS_FILE_NAME = 'japanese_flashcards_progress.json';
+const PROGRESS_DB_NAME = 'jp-flashcards-progress-db';
+const PROGRESS_DB_STORE = 'handles';
+
+// Browser fallback for running the HTML outside ChatGPT artifacts.
+if(!window.storage){
+  window.storage = {
+    async get(key){
+      const value = localStorage.getItem('jp-flashcards-' + key);
+      return value === null ? null : { value };
+    },
+    async set(key, value){
+      localStorage.setItem('jp-flashcards-' + key, value);
+      return { ok:true };
+    }
+  };
+}
+
+let VOCAB = [];
+let vocabSourceName = '';
+let vocabLoadedAt = '';
+let CATEGORIES = [];
+
+const EXCEL_HEADERS = [
+  'ID',
+  'Category',
+  'English',
+  'Kana (hiragana/katakana)',
+  'Kana script',
+  'Kanji / standard form',
+  'Kanji + kana form',
+  'Romaji pronunciation',
+  'Notes',
+  'Source(s)'
+];
+
+const HEADER_ALIASES = {
+  id: ['ID', 'Id', 'id'],
+  c: ['Category', 'category'],
+  e: ['English', 'English meaning', 'Meaning', 'Translation'],
+  k: ['Kana (hiragana/katakana)', 'Kana', 'Hiragana/Katakana', 'かな'],
+  script: ['Kana script', 'Script'],
+  kj: ['Kanji / standard form', 'Kanji', 'Standard form'],
+  kk: ['Kanji + kana form', 'Kanji+kana form', 'Kanji and kana form'],
+  r: ['Romaji pronunciation', 'Romaji', 'Romanji', 'Romaji pronunciation'],
+  notes: ['Notes', 'Note'],
+  source: ['Source(s)', 'Source', 'Sources']
+};
+
+const MODES = [
+  { id:'kana2en',       jp:'かな',       en:'English', needsKanji:false, promptField:'k',  answerField:'e', label:'かな → English' },
+  { id:'en2kana',       jp:'English',    en:'かな',    needsKanji:false, promptField:'e',  answerField:'k', label:'English → かな' },
+  { id:'kanji2en',      jp:'漢字',       en:'English', needsKanji:true,  promptField:'kj', answerField:'e', label:'漢字 → English' },
+  { id:'romaji2en',     jp:'Romaji',     en:'English', needsKanji:false, promptField:'r',  answerField:'e', label:'Romaji → English' },
+  { id:'en2romaji',     jp:'English',    en:'Romaji',  needsKanji:false, promptField:'e',  answerField:'r', label:'English → Romaji' },
+  { id:'kana2romaji',   jp:'かな',       en:'Romaji',  needsKanji:false, promptField:'k',  answerField:'r', label:'かな → Romaji' },
+  { id:'kanjiKana2romaji', jp:'漢字＋かな', en:'Romaji', needsField:'kk', promptField:'kk', answerField:'r', label:'漢字＋かな → Romaji' },
+];
+
+function rebuildCategories(){
+  CATEGORIES = [...new Set(VOCAB.map(v=>v.c).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+}
+
+function cleanCell(value){
+  if(value === null || value === undefined) return '';
+  return String(value).trim();
+}
+
+function normalizeHeader(value){
+  return cleanCell(value).replace(/\s+/g, ' ').toLowerCase();
+}
+
+function headerIndex(headers, aliases){
+  const normalizedHeaders = headers.map(normalizeHeader);
+  for(const alias of aliases){
+    const idx = normalizedHeaders.indexOf(normalizeHeader(alias));
+    if(idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function valueFromRow(row, headerMap, key){
+  const idx = headerMap[key];
+  return idx >= 0 ? cleanCell(row[idx]) : '';
+}
+
+function simpleHash(text){
+  let h = 0;
+  for(let i=0;i<text.length;i++) h = Math.imul(31, h) + text.charCodeAt(i) | 0;
+  return Math.abs(h).toString(36);
+}
+
+function computeKanjiKana(kanji, kana){
+  if(kanji && kana && kanji !== kana) return `${kanji}（${kana}）`;
+  return kanji || kana || '';
+}
+
+function makeVocabId(rawId, category, english, kana, romaji){
+  const trimmedId = cleanCell(rawId);
+  if(trimmedId) return 'xl-' + trimmedId;
+  return 'xl-auto-' + simpleHash([category, english, kana, romaji].join('|'));
+}
+
+function rowToVocab(row, headers, sheetName, rowNum){
+  const headerMap = {};
+  for(const key of Object.keys(HEADER_ALIASES)) headerMap[key] = headerIndex(headers, HEADER_ALIASES[key]);
+
+  const rawId = valueFromRow(row, headerMap, 'id');
+  const category = valueFromRow(row, headerMap, 'c') || sheetName;
+  const english = valueFromRow(row, headerMap, 'e');
+  const kana = valueFromRow(row, headerMap, 'k');
+  const script = valueFromRow(row, headerMap, 'script') || inferKanaScript(kana);
+  const kanji = valueFromRow(row, headerMap, 'kj');
+  const kanjiKana = valueFromRow(row, headerMap, 'kk') || computeKanjiKana(kanji, kana);
+  const romaji = valueFromRow(row, headerMap, 'r');
+  const notes = valueFromRow(row, headerMap, 'notes');
+  const source = valueFromRow(row, headerMap, 'source');
+
+  if(!category && !english && !kana && !kanji && !kanjiKana && !romaji) return null;
+  if(!english || !kana || !romaji) return null;
+
+  return {
+    id: makeVocabId(rawId || `${sheetName}-${rowNum}`, category, english, kana, romaji),
+    rawId: rawId || '',
+    c: category,
+    e: english,
+    k: kana,
+    script,
+    kj: kanji || '',
+    kk: kanjiKana || computeKanjiKana(kanji, kana),
+    r: romaji,
+    notes,
+    source
+  };
+}
+
+function inferKanaScript(kana){
+  const hasHira = /[\u3040-\u309F]/.test(kana || '');
+  const hasKata = /[\u30A0-\u30FF]/.test(kana || '');
+  if(hasHira && hasKata) return 'mixed';
+  if(hasKata) return 'katakana';
+  if(hasHira) return 'hiragana';
+  return '';
+}
+
+function parseWorkbookToVocab(workbook){
+  const items = [];
+  const seenIds = new Set();
+  workbook.SheetNames.forEach(sheetName=>{
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header:1, defval:'' });
+    if(!rows.length) return;
+    const headers = rows[0].map(cleanCell);
+    rows.slice(1).forEach((row, idx)=>{
+      const item = rowToVocab(row, headers, sheetName, idx + 2);
+      if(!item) return;
+      let id = item.id;
+      let suffix = 2;
+      while(seenIds.has(id)) id = `${item.id}-${suffix++}`;
+      item.id = id;
+      seenIds.add(item.id);
+      items.push(item);
+    });
+  });
+  return items;
+}
+
+async function loadWorkbookFromArrayBuffer(buffer, sourceName){
+  if(typeof XLSX === 'undefined') throw new Error('The Excel parser did not load. Check your internet connection or the SheetJS script tag.');
+  const workbook = XLSX.read(buffer, { type:'array' });
+  const items = parseWorkbookToVocab(workbook);
+  if(!items.length) throw new Error('No usable rows found. Expected columns: ' + EXCEL_HEADERS.join(', '));
+  VOCAB = items;
+  vocabSourceName = sourceName || 'Excel workbook';
+  vocabLoadedAt = new Date().toISOString();
+  rebuildCategories();
+  await saveVocabulary();
+  refreshVocabUI();
+  setVocabStatus(`Loaded <strong>${VOCAB.length}</strong> words from <strong>${escapeHtml(vocabSourceName)}</strong>.`);
+}
+
+async function loadVocabulary(){
+  try{
+    const res = await window.storage.get(VOCAB_STORAGE_KEY, false);
+    if(res && res.value){
+      const saved = JSON.parse(res.value);
+      if(Array.isArray(saved.items) && saved.items.length){
+        VOCAB = saved.items;
+        vocabSourceName = saved.sourceName || 'Saved vocabulary';
+        vocabLoadedAt = saved.loadedAt || '';
+        rebuildCategories();
+        return;
+      }
+    }
+  }catch(e){ /* start empty */ }
+
+  // Best effort: works when the HTML and workbook are served from the same folder over http(s).
+  try{
+    await autoLoadDefaultWorkbook(false);
+  }catch(e){
+    VOCAB = [];
+    rebuildCategories();
+  }
+}
+
+async function saveVocabulary(){
+  await window.storage.set(VOCAB_STORAGE_KEY, JSON.stringify({
+    sourceName: vocabSourceName,
+    loadedAt: vocabLoadedAt,
+    items: VOCAB
+  }), false);
+}
+
+async function autoLoadDefaultWorkbook(showMessages=true){
+  if(typeof XLSX === 'undefined') throw new Error('The Excel parser did not load.');
+  if(showMessages) setVocabStatus(`Trying to load <strong>${DEFAULT_EXCEL_FILE}</strong> from the same folder…`);
+  const res = await fetch(DEFAULT_EXCEL_FILE, { cache:'no-store' });
+  if(!res.ok) throw new Error(`Could not fetch ${DEFAULT_EXCEL_FILE}. Use Load Excel file instead.`);
+  const buffer = await res.arrayBuffer();
+  await loadWorkbookFromArrayBuffer(buffer, DEFAULT_EXCEL_FILE);
+}
+
+function setVocabStatus(html){
+  const el = document.getElementById('vocab-source-status');
+  if(el) el.innerHTML = html;
+}
+
+function updateVocabStatus(){
+  if(!document.getElementById('vocab-source-status')) return;
+  if(!VOCAB.length){
+    setVocabStatus(`No vocabulary loaded. Use <strong>Load Excel file</strong>. The expected workbook columns are: ${EXCEL_HEADERS.map(escapeHtml).join(', ')}.`);
+    return;
+  }
+  setVocabStatus(`Using <strong>${VOCAB.length}</strong> words from <strong>${escapeHtml(vocabSourceName || 'saved vocabulary')}</strong>. Export keeps the same workbook columns, and new rows use Source(s) = <strong>${todaySourceTag()}</strong>.`);
+}
+
+function refreshVocabUI(){
+  rebuildCategories();
+  buildSetupUI();
+  renderLedger();
+  renderWordLibrary();
+  refreshCategoryOptions();
+  updateVocabStatus();
+}
+
+function todaySourceTag(){
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yyyy = d.getFullYear();
+  return `${dd}${mm}${yyyy} - ${GAME_VERSION}`;
+}
+
+function refreshCategoryOptions(){
+  const dl = document.getElementById('category-options');
+  if(!dl) return;
+  dl.innerHTML = CATEGORIES.map(c=>`<option value="${escapeHtml(c)}"></option>`).join('');
+}
+
+function firstValue(...vals){
+  for(const val of vals){
+    const cleaned = cleanCell(val);
+    if(cleaned) return cleaned;
+  }
+  return '';
+}
+
+function getPromptValue(item, mode){
+  if(!item || !mode) return '';
+  if(mode.promptField === 'kk') return firstValue(item.kk, computeKanjiKana(item.kj, item.k), item.kj, item.k);
+  return firstValue(item[mode.promptField]);
+}
+
+function getAnswerValue(item, mode){
+  if(!item || !mode) return '';
+  return firstValue(item[mode.answerField]);
+}
+
+function isItemEligibleForMode(item, mode){
+  if(!item || !mode) return false;
+  if(mode.needsKanji && !firstValue(item.kj)) return false;
+  if(mode.needsField && !getPromptValue(item, mode)) return false;
+  return !!(getPromptValue(item, mode) && getAnswerValue(item, mode));
+}
+
+function renderWordLibrary(){
+  const list = document.getElementById('word-list');
+  if(!list) return;
+  const query = (document.getElementById('word-search')?.value || '').toLowerCase().trim();
+  const statusFilter = document.getElementById('word-status-filter')?.value || 'known';
+  let items = VOCAB.slice();
+  if(statusFilter !== 'all'){
+    items = items.filter(v => getProgress(v.id).status === statusFilter);
+  }
+  if(query){
+    items = items.filter(v => [v.c, v.e, v.k, v.kj, v.kk, v.r, v.notes, v.source].join(' ').toLowerCase().includes(query));
+  }
+  const total = items.length;
+  items = items.slice(0, 250);
+  if(!items.length){
+    list.innerHTML = `<div class="empty">${VOCAB.length ? 'No matching words yet.' : 'Load an Excel file to browse words.'}</div>`;
+    return;
+  }
+  const rows = items.map(v=>{
+    const st = getProgress(v.id).status;
+    return `<tr>
+      <td><span class="status-mini">${escapeHtml(st)}</span></td>
+      <td>${escapeHtml(v.c)}</td>
+      <td>${escapeHtml(v.e)}</td>
+      <td class="jp-cell">${colorizeJP(v.kk || v.kj || v.k)}</td>
+      <td>${escapeHtml(v.r)}</td>
+    </tr>`;
+  }).join('');
+  list.innerHTML = `<table><thead><tr><th>Status</th><th>Category</th><th>English</th><th>Japanese</th><th>Romaji</th></tr></thead><tbody>${rows}</tbody></table>${total>items.length?`<div class="empty">Showing 250 of ${total} matches. Narrow the search to see more.</div>`:''}`;
+}
+
+function nextRawId(){
+  let max = 0;
+  VOCAB.forEach(v=>{
+    const n = parseInt(v.rawId || String(v.id).replace(/^xl-/,''), 10);
+    if(Number.isFinite(n)) max = Math.max(max, n);
+  });
+  return max + 1;
+}
+
+async function handleAddWord(e){
+  e.preventDefault();
+  const rawId = String(nextRawId());
+  const category = cleanCell(document.getElementById('add-word-category').value);
+  const english = cleanCell(document.getElementById('add-word-english').value);
+  const kana = cleanCell(document.getElementById('add-word-kana').value);
+  const script = cleanCell(document.getElementById('add-word-script').value) || inferKanaScript(kana);
+  const kanji = cleanCell(document.getElementById('add-word-kanji').value);
+  const kk = cleanCell(document.getElementById('add-word-kanji-kana').value) || computeKanjiKana(kanji, kana);
+  const romaji = cleanCell(document.getElementById('add-word-romaji').value);
+  const source = cleanCell(document.getElementById('add-word-source').value) || todaySourceTag();
+  const notes = cleanCell(document.getElementById('add-word-notes').value);
+  const statusEl = document.getElementById('add-word-status');
+  if(!category || !english || !kana || !romaji){
+    statusEl.textContent = 'Category, English, Kana, and Romaji are required.';
+    return;
+  }
+  const item = { id: makeVocabId(rawId, category, english, kana, romaji), rawId, c:category, e:english, k:kana, script, kj:kanji, kk, r:romaji, notes, source };
+  VOCAB.push(item);
+  vocabSourceName = vocabSourceName || 'Manual vocabulary';
+  vocabLoadedAt = new Date().toISOString();
+  await saveVocabulary();
+  document.getElementById('add-word-form').reset();
+  document.getElementById('add-word-source').value = todaySourceTag();
+  statusEl.textContent = `Added “${english}”.`;
+  refreshVocabUI();
+}
+
+function rowsForExport(category){
+  return VOCAB.filter(v=>v.c === category).map(v=>[
+    v.rawId || String(v.id).replace(/^xl-/,''),
+    v.c,
+    v.e,
+    v.k,
+    v.script || inferKanaScript(v.k),
+    v.kj || v.k,
+    v.kk || computeKanjiKana(v.kj, v.k),
+    v.r,
+    v.notes || '',
+    v.source || todaySourceTag()
+  ]);
+}
+
+function safeSheetName(name, used){
+  let base = String(name || 'Vocabulary').replace(/[\\/?*\[\]:]/g, ' ').trim().slice(0,31) || 'Vocabulary';
+  let candidate = base;
+  let i = 2;
+  while(used.has(candidate)){
+    const suffix = ` ${i++}`;
+    candidate = base.slice(0, 31 - suffix.length) + suffix;
+  }
+  used.add(candidate);
+  return candidate;
+}
+
+function exportVocabularyExcel(){
+  if(typeof XLSX === 'undefined'){
+    setVocabStatus('Cannot export because the Excel parser/exporter did not load.');
+    return;
+  }
+  if(!VOCAB.length){
+    setVocabStatus('Load or add words before exporting.');
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+  const used = new Set();
+  CATEGORIES.forEach(cat=>{
+    const data = [EXCEL_HEADERS, ...rowsForExport(cat)];
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [{wch:8},{wch:24},{wch:28},{wch:22},{wch:14},{wch:22},{wch:28},{wch:22},{wch:32},{wch:34}];
+    XLSX.utils.book_append_sheet(wb, ws, safeSheetName(cat, used));
+  });
+  const tag = todaySourceTag().replace(/\s+-\s+/,'_').replace(/[^0-9A-Za-z_-]/g,'');
+  XLSX.writeFile(wb, `japanese_vocabulary_${tag}.xlsx`);
+}
+
+// ==================== KANA NINJA ====================
+// Hiragana -> katakana share the same code-point offset (+0x60) across the
+// gojūon, dakuten/handakuten, and yōon blocks, so katakana is derived
+// rather than hand-transcribed (avoids transcription drift).
+function toKatakana(hira){
+  return hira.split('').map(ch=>{
+    const cp = ch.codePointAt(0);
+    if(cp >= 0x3041 && cp <= 0x3096) return String.fromCodePoint(cp + 0x60);
+    return ch;
+  }).join('');
+}
+
+const HIRAGANA_GROUPS = {
+  base: [
+    ['あ','a'],['い','i'],['う','u'],['え','e'],['お','o'],
+    ['か','ka'],['き','ki'],['く','ku'],['け','ke'],['こ','ko'],
+    ['さ','sa'],['し','shi'],['す','su'],['せ','se'],['そ','so'],
+    ['た','ta'],['ち','chi'],['つ','tsu'],['て','te'],['と','to'],
+    ['な','na'],['に','ni'],['ぬ','nu'],['ね','ne'],['の','no'],
+    ['は','ha'],['ひ','hi'],['ふ','fu'],['へ','he'],['ほ','ho'],
+    ['ま','ma'],['み','mi'],['む','mu'],['め','me'],['も','mo'],
+    ['や','ya'],['ゆ','yu'],['よ','yo'],
+    ['ら','ra'],['り','ri'],['る','ru'],['れ','re'],['ろ','ro'],
+    ['わ','wa'],['を','o'],['ん','n'],
+  ],
+  dakuten: [
+    ['が','ga'],['ぎ','gi'],['ぐ','gu'],['げ','ge'],['ご','go'],
+    ['ざ','za'],['じ','ji'],['ず','zu'],['ぜ','ze'],['ぞ','zo'],
+    ['だ','da'],['ぢ','ji'],['づ','zu'],['で','de'],['ど','do'],
+    ['ば','ba'],['び','bi'],['ぶ','bu'],['べ','be'],['ぼ','bo'],
+    ['ぱ','pa'],['ぴ','pi'],['ぷ','pu'],['ぺ','pe'],['ぽ','po'],
+  ],
+  yoon: [
+    ['きゃ','kya'],['きゅ','kyu'],['きょ','kyo'],
+    ['しゃ','sha'],['しゅ','shu'],['しょ','sho'],
+    ['ちゃ','cha'],['ちゅ','chu'],['ちょ','cho'],
+    ['にゃ','nya'],['にゅ','nyu'],['にょ','nyo'],
+    ['ひゃ','hya'],['ひゅ','hyu'],['ひょ','hyo'],
+    ['みゃ','mya'],['みゅ','myu'],['みょ','myo'],
+    ['りゃ','rya'],['りゅ','ryu'],['りょ','ryo'],
+    ['ぎゃ','gya'],['ぎゅ','gyu'],['ぎょ','gyo'],
+    ['じゃ','ja'],['じゅ','ju'],['じょ','jo'],
+    ['びゃ','bya'],['びゅ','byu'],['びょ','byo'],
+    ['ぴゃ','pya'],['ぴゅ','pyu'],['ぴょ','pyo'],
+  ],
+  sokuon: [
+    ['っか','kka'],['っき','kki'],['っく','kku'],['っけ','kke'],['っこ','kko'],
+    ['っさ','ssa'],['っし','sshi'],['っす','ssu'],['っせ','sse'],['っそ','sso'],
+    ['った','tta'],['っち','cchi'],['っつ','ttsu'],['って','tte'],['っと','tto'],
+    ['っぱ','ppa'],['っぴ','ppi'],['っぷ','ppu'],['っぺ','ppe'],['っぽ','ppo'],
+    ['っきゃ','kkya'],['っきゅ','kkyu'],['っきょ','kkyo'],
+    ['っしゃ','ssha'],['っしゅ','sshu'],['っしょ','ssho'],
+    ['っちゃ','ccha'],['っちゅ','cchu'],['っちょ','ccho'],
+    ['っぴゃ','ppya'],['っぴゅ','ppyu'],['っぴょ','ppyo'],
+  ],
+};
+
+const KANA_GROUP_LABELS = {
+  base: 'base',
+  dakuten: 'dakuten + handakuten',
+  yoon: 'yōon',
+  sokuon: 'sokuon',
+};
+
+const HIRAGANA_PAIRS = Object.values(HIRAGANA_GROUPS).flat();
+
+const KANA_DECK = Object.entries(HIRAGANA_GROUPS).flatMap(([group, pairs]) => [
+  ...pairs.map(([k,r])=>({ kana:k, romaji:r, script:'hiragana', group })),
+  ...pairs.map(([k,r])=>({ kana:toKatakana(k), romaji:r, script:'katakana', group })),
+]);
+
+const KANA_DICTIONARY_SECTIONS = [
+  {
+    title: 'Basic gojūon — 五十音',
+    columns: ['a','i','u','e','o'],
+    rows: [
+      { label:'∅', cells:[['あ','a'],['い','i'],['う','u'],['え','e'],['お','o']] },
+      { label:'K', cells:[['か','ka'],['き','ki'],['く','ku'],['け','ke'],['こ','ko']] },
+      { label:'S', cells:[['さ','sa'],['し','shi'],['す','su'],['せ','se'],['そ','so']] },
+      { label:'T', cells:[['た','ta'],['ち','chi'],['つ','tsu'],['て','te'],['と','to']] },
+      { label:'N', cells:[['な','na'],['に','ni'],['ぬ','nu'],['ね','ne'],['の','no']] },
+      { label:'H', cells:[['は','ha'],['ひ','hi'],['ふ','fu'],['へ','he'],['ほ','ho']] },
+      { label:'M', cells:[['ま','ma'],['み','mi'],['む','mu'],['め','me'],['も','mo']] },
+      { label:'Y', cells:[['や','ya'],null,['ゆ','yu'],null,['よ','yo']] },
+      { label:'R', cells:[['ら','ra'],['り','ri'],['る','ru'],['れ','re'],['ろ','ro']] },
+      { label:'W / N', cells:[['わ','wa'],null,null,null,['を','o']], extra:[['ん','n']] },
+    ],
+  },
+  {
+    title: 'Dakuten + handakuten — 濁点・半濁点',
+    columns: ['a','i','u','e','o'],
+    rows: [
+      { label:'G', cells:[['が','ga'],['ぎ','gi'],['ぐ','gu'],['げ','ge'],['ご','go']] },
+      { label:'Z', cells:[['ざ','za'],['じ','ji'],['ず','zu'],['ぜ','ze'],['ぞ','zo']] },
+      { label:'D', cells:[['だ','da'],['ぢ','ji'],['づ','zu'],['で','de'],['ど','do']] },
+      { label:'B', cells:[['ば','ba'],['び','bi'],['ぶ','bu'],['べ','be'],['ぼ','bo']] },
+      { label:'P', cells:[['ぱ','pa'],['ぴ','pi'],['ぷ','pu'],['ぺ','pe'],['ぽ','po']] },
+    ],
+  },
+  {
+    title: 'Yōon — 拗音',
+    columns: ['ya','yu','yo'],
+    rows: [
+      { label:'KY', cells:[['きゃ','kya'],['きゅ','kyu'],['きょ','kyo']] },
+      { label:'SH', cells:[['しゃ','sha'],['しゅ','shu'],['しょ','sho']] },
+      { label:'CH', cells:[['ちゃ','cha'],['ちゅ','chu'],['ちょ','cho']] },
+      { label:'NY', cells:[['にゃ','nya'],['にゅ','nyu'],['にょ','nyo']] },
+      { label:'HY', cells:[['ひゃ','hya'],['ひゅ','hyu'],['ひょ','hyo']] },
+      { label:'MY', cells:[['みゃ','mya'],['みゅ','myu'],['みょ','myo']] },
+      { label:'RY', cells:[['りゃ','rya'],['りゅ','ryu'],['りょ','ryo']] },
+      { label:'GY', cells:[['ぎゃ','gya'],['ぎゅ','gyu'],['ぎょ','gyo']] },
+      { label:'J', cells:[['じゃ','ja'],['じゅ','ju'],['じょ','jo']] },
+      { label:'BY', cells:[['びゃ','bya'],['びゅ','byu'],['びょ','byo']] },
+      { label:'PY', cells:[['ぴゃ','pya'],['ぴゅ','pyu'],['ぴょ','pyo']] },
+    ],
+  },
+  {
+    title: 'Sokuon examples — 促音',
+    columns: ['a','i','u','e','o'],
+    rows: [
+      { label:'KK', cells:[['っか','kka'],['っき','kki'],['っく','kku'],['っけ','kke'],['っこ','kko']] },
+      { label:'SS', cells:[['っさ','ssa'],['っし','sshi'],['っす','ssu'],['っせ','sse'],['っそ','sso']] },
+      { label:'TT', cells:[['った','tta'],['っち','cchi'],['っつ','ttsu'],['って','tte'],['っと','tto']] },
+      { label:'PP', cells:[['っぱ','ppa'],['っぴ','ppi'],['っぷ','ppu'],['っぺ','ppe'],['っぽ','ppo']] },
+    ],
+  },
+];
+
+function renderKanaDictionary(){
+  const target = document.getElementById('kana-dictionary-content');
+  if(!target) return;
+  target.innerHTML = KANA_DICTIONARY_SECTIONS.map(section => {
+    const header = `<tr><th class="row-head">row</th>${section.columns.map(c=>`<th>${escapeHtml(c)}</th>`).join('')}${section.rows.some(r=>r.extra) ? '<th>extra</th>' : ''}</tr>`;
+    const rows = section.rows.map(row => {
+      const cells = row.cells.map(pair => `<td>${renderKanaDictionaryCell(pair)}</td>`).join('');
+      const extra = section.rows.some(r=>r.extra) ? `<td>${(row.extra || []).map(renderKanaDictionaryCell).join('') || '<div class="kana-cell empty">—</div>'}</td>` : '';
+      return `<tr><th class="row-head">${escapeHtml(row.label)}</th>${cells}${extra}</tr>`;
+    }).join('');
+    return `<section class="kana-section"><h3>${escapeHtml(section.title)}</h3><div class="kana-grid-scroll"><table class="kana-grid"><thead>${header}</thead><tbody>${rows}</tbody></table></div></section>`;
+  }).join('');
+}
+
+function renderKanaDictionaryCell(pair){
+  if(!pair) return '<div class="kana-cell empty">—</div>';
+  const [hira, romaji] = pair;
+  const kata = toKatakana(hira);
+  return `<div class="kana-cell"><div class="kana-pair"><span class="hira jp-hira">${escapeHtml(hira)}</span><span class="kata jp-kata">${escapeHtml(kata)}</span></div><div class="kana-romaji">${escapeHtml(romaji)}</div></div>`;
+}
+
+let ninjaScripts = new Set(['hiragana','katakana']);
+let ninjaGroups = new Set(['base','dakuten','yoon','sokuon']);
+let ninjaEasyMode = false;
+let ninjaInfiniteLives = false;
+let ninjaHintThreshold = 0.5;   // fraction of the fall (0 = top, 1 = bottom) where the hint appears
+let ninjaSpeedLevel = 2;        // 1 (slow) – 10 (fast), set from the setup slider
+let ninjaMaxColumns = 3;        // number of lanes kana can fall in
+let ninjaMaxPerColumn = 2;      // max kana allowed falling in a single lane at once
+let ninjaLastValidInput = '';   // last input value confirmed to still match a possible falling kana
+let ninjaPool = [];
+let ninjaActive = [];     // { id, el, hintEl, x, y, speed, romaji, hinted }
+let ninjaItemId = 0;
+let ninjaScore = 0;
+let ninjaLives = 3;
+let ninjaBest = 0;
+let ninjaRunning = false;
+let ninjaRafId = null;
+let ninjaSpawnTimer = null;
+let ninjaSpawnInterval = 1700;
+let ninjaFallDuration = 7500; // ms to cross the arena at current difficulty
+let ninjaLastTs = null;
+
+function speedLevelToFallDuration(level){
+  // level 1 -> 10000ms (slow), level 10 -> 3000ms (fast)
+  return 20000 - (level - 1) * (7000 / 9);
+}
+function speedLevelToSpawnInterval(level){
+  // level 1 -> 2200ms between spawns, level 10 -> 700ms
+  return 2200 - (level - 1) * (1500 / 9);
+}
+
+async function loadNinjaBest(){
+  try{
+    const res = await window.storage.get('kana-ninja-best', false);
+    if(res && res.value) ninjaBest = parseInt(res.value, 10) || 0;
+  }catch(e){ ninjaBest = 0; }
+}
+async function saveNinjaBest(){
+  try{ await window.storage.set('kana-ninja-best', String(ninjaBest), false); }catch(e){}
+}
+
+function computeNinjaPool(){
+  return KANA_DECK.filter(item => ninjaScripts.has(item.script) && ninjaGroups.has(item.group));
+}
+
+function renderNinjaHud(){
+  const livesEl = document.getElementById('ninja-lives');
+  if(ninjaInfiniteLives){
+    livesEl.classList.add('infinite');
+    livesEl.textContent = '∞ lives';
+  } else {
+    livesEl.classList.remove('infinite');
+    let hearts = '';
+    for(let i=0;i<3;i++){ hearts += `<span class="${i < ninjaLives ? '' : 'lost'}">♥</span>`; }
+    livesEl.innerHTML = hearts;
+  }
+  document.getElementById('ninja-score-display').innerHTML =
+    `Score: ${ninjaScore}<span class="best" id="ninja-best-display">Best: ${ninjaBest}</span>`;
+}
+
+function updateNinjaHintMarker(){
+  const marker = document.getElementById('ninja-hint-marker');
+  const arena = ninjaArena();
+  if(!marker || !arena) return;
+  const arenaWidth = arena.clientWidth || 0;
+  const span = arenaWidth + 108;
+  const markerX = -54 + ninjaHintThreshold * span;
+  const clampedX = Math.max(0, Math.min(arenaWidth, markerX));
+  marker.style.left = clampedX + 'px';
+  marker.classList.toggle('show', ninjaEasyMode);
+}
+
+function ninjaArena(){ return document.getElementById('ninja-arena'); }
+
+function ninjaColumnCounts(){
+  const counts = new Array(ninjaMaxColumns).fill(0);
+  for(const it of ninjaActive){
+    if(it.lane >= 0 && it.lane < ninjaMaxColumns) counts[it.lane]++;
+  }
+  return counts;
+}
+
+function spawnKanaItem(){
+  if(!ninjaRunning) return;
+  const arena = ninjaArena();
+  const arenaWidth = arena.clientWidth;
+  const arenaHeight = arena.clientHeight;
+
+  // Find lanes (horizontal bands) that haven't hit the max-per-lane cap.
+  const counts = ninjaColumnCounts();
+  const availableLanes = [];
+  for(let l=0;l<ninjaMaxColumns;l++){ if(counts[l] < ninjaMaxPerColumn) availableLanes.push(l); }
+  if(availableLanes.length === 0) return; // every lane is full — skip this spawn tick, try again next interval
+
+  // Avoid spawning a romaji that's already on screen, to keep slicing unambiguous.
+  const activeRomaji = new Set(ninjaActive.map(it=>it.romaji));
+  const candidates = ninjaPool.filter(it => !activeRomaji.has(it.romaji));
+  const pool = candidates.length ? candidates : ninjaPool;
+  if(pool.length === 0) return;
+  const choice = pool[Math.floor(Math.random()*pool.length)];
+
+  const lane = availableLanes[Math.floor(Math.random()*availableLanes.length)];
+  const laneHeight = arenaHeight / ninjaMaxColumns;
+  const margin = Math.min(24, laneHeight * 0.22);
+  const y = lane * laneHeight + margin + Math.random() * Math.max(1, (laneHeight - margin*2));
+
+  // All kana enter from the same side and travel across to the other.
+  const dir = 1; // 1 = enters left, travels right
+  const startX = dir === 1 ? -54 : arenaWidth + 54;
+
+  const el = document.createElement('div');
+  el.className = 'kana-item';
+  el.style.top = y + 'px';
+  el.style.left = startX + 'px';
+  const wideClass = choice.kana.length > 1 ? ' wide' : '';
+  el.innerHTML = `<div class="glyph${wideClass}">${colorizeJP(choice.kana)}</div><div class="hint">${choice.romaji}</div>`;
+  arena.appendChild(el);
+
+  const item = {
+    id: ninjaItemId++,
+    el,
+    hintEl: el.querySelector('.hint'),
+    x: startX,
+    y,
+    dir,
+    lane,
+    romaji: choice.romaji,
+    duration: ninjaFallDuration,
+    elapsed: 0,
+    hinted: false,
+  };
+  ninjaActive.push(item);
+}
+
+function ninjaGameLoop(ts){
+  if(!ninjaRunning) return;
+  if(ninjaLastTs === null) ninjaLastTs = ts;
+  const dt = ts - ninjaLastTs;
+  ninjaLastTs = ts;
+
+  updateNinjaHintMarker();
+
+  const arenaWidth = ninjaArena().clientWidth;
+  for(const item of [...ninjaActive]){
+    item.elapsed += dt;
+    const progress = Math.min(1, item.elapsed / item.duration);
+    const span = arenaWidth + 108; // travel from just off-screen to just off-screen on the far side
+    item.x = item.dir === 1 ? (-54 + progress * span) : (arenaWidth + 54 - progress * span);
+    item.el.style.left = item.x + 'px';
+
+    if(ninjaEasyMode && !item.hinted && progress >= ninjaHintThreshold){
+      item.hinted = true;
+      item.el.classList.add('hinted');
+    }
+
+    if(progress >= 1){
+      missKanaItem(item);
+    }
+  }
+
+  if(ninjaRunning){
+    ninjaRafId = requestAnimationFrame(ninjaGameLoop);
+  }
+}
+
+function removeNinjaItem(item){
+  ninjaActive = ninjaActive.filter(it => it.id !== item.id);
+  setTimeout(()=>{ item.el.remove(); }, 220);
+}
+
+function missKanaItem(item){
+  item.el.classList.add('missed');
+  removeNinjaItem(item);
+  if(ninjaInfiniteLives){
+    renderNinjaHud();
+    return;
+  }
+  ninjaLives -= 1;
+  renderNinjaHud();
+  if(ninjaLives <= 0){
+    endNinjaGame();
+  }
+}
+
+function sliceKanaItem(item){
+  item.el.classList.add('sliced');
+  removeNinjaItem(item);
+  ninjaScore += 1;
+  renderNinjaHud();
+  rampNinjaDifficulty();
+}
+
+let ninjaSpawnFloor = 500;
+let ninjaFallFloor = 1800;
+
+function rampNinjaDifficulty(){
+  if(ninjaScore > 0 && ninjaScore % 5 === 0){
+    ninjaSpawnInterval = Math.max(ninjaSpawnFloor, ninjaSpawnInterval - 120);
+    ninjaFallDuration = Math.max(ninjaFallFloor, ninjaFallDuration - 350);
+    restartNinjaSpawnTimer();
+  }
+}
+
+function restartNinjaSpawnTimer(){
+  clearInterval(ninjaSpawnTimer);
+  ninjaSpawnTimer = setInterval(spawnKanaItem, ninjaSpawnInterval);
+}
+
+function ninjaSubmitAnswer(){
+  if(!ninjaRunning) return;
+  const input = document.getElementById('ninja-answer-input');
+  const val = normalizeRomaji(input.value);
+  input.value = '';
+  ninjaLastValidInput = '';
+  if(!val) return;
+  // Slice the matching item closest to exiting the screen (most urgent).
+  const matches = ninjaActive.filter(it => normalizeRomaji(it.romaji) === val);
+  if(matches.length === 0) return;
+  matches.sort((a,b)=> (b.elapsed/b.duration) - (a.elapsed/a.duration));
+  sliceKanaItem(matches[0]);
+}
+
+// Rule-based input: every keystroke is checked against what's currently falling.
+// - If the typed text exactly completes a falling kana's romaji, it auto-submits immediately.
+// - If the typed text can no longer possibly match anything falling, the offending
+//   keystroke is auto-rejected (input reverts to the last still-possible value).
+function ninjaHandleInput(e){
+  const input = e.target;
+  if(!ninjaRunning){ input.value=''; return; }
+  const raw = input.value;
+  const valNorm = normalizeRomaji(raw);
+
+  if(valNorm){
+    const exact = ninjaActive.filter(it => normalizeRomaji(it.romaji) === valNorm);
+    if(exact.length){
+      exact.sort((a,b)=> (b.elapsed/b.duration) - (a.elapsed/a.duration));
+      sliceKanaItem(exact[0]);
+      input.value = '';
+      ninjaLastValidInput = '';
+      return;
+    }
+  }
+
+  const stillPossible = valNorm === '' || ninjaActive.some(it => normalizeRomaji(it.romaji).startsWith(valNorm));
+  if(stillPossible){
+    ninjaLastValidInput = raw;
+  } else {
+    // Not a prefix of anything falling — reject the keystroke that broke it.
+    input.value = ninjaLastValidInput;
+  }
+}
+
+async function endNinjaGame(){
+  ninjaRunning = false;
+  if(ninjaRafId) cancelAnimationFrame(ninjaRafId);
+  clearInterval(ninjaSpawnTimer);
+  document.getElementById('ninja-answer-input').disabled = true;
+
+  const isNewBest = ninjaScore > ninjaBest;
+  if(isNewBest){ ninjaBest = ninjaScore; await saveNinjaBest(); }
+  renderNinjaHud();
+
+  document.getElementById('ninja-overlay-title').textContent = '道場破れたり — Game Over';
+  document.getElementById('ninja-final-score').textContent = ninjaScore;
+  document.getElementById('ninja-best-note').textContent = isNewBest
+    ? 'New best score!'
+    : `Best: ${ninjaBest}`;
+  document.getElementById('ninja-overlay').style.display = 'flex';
+}
+
+function startNinjaGame(){
+  ninjaPool = computeNinjaPool();
+  if(ninjaPool.length === 0){
+    document.getElementById('ninja-setup-error').textContent = ninjaScripts.size === 0 ? 'Pick at least one script (hiragana or katakana).' : 'Pick at least one kana group.';
+    return;
+  }
+  document.getElementById('ninja-setup-error').textContent = '';
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('quiz-screen').style.display = 'none';
+  document.getElementById('ninja-setup-screen').style.display = 'none';
+  document.getElementById('ninja-game-screen').style.display = 'block';
+
+  ninjaArena().querySelectorAll('.kana-item').forEach(el=>el.remove());
+  document.getElementById('ninja-overlay').style.display = 'none';
+
+  ninjaActive = [];
+  ninjaScore = 0;
+  ninjaLives = 3;
+  ninjaLastValidInput = '';
+  ninjaSpawnInterval = speedLevelToSpawnInterval(ninjaSpeedLevel);
+  ninjaFallDuration = speedLevelToFallDuration(ninjaSpeedLevel);
+  ninjaSpawnFloor = Math.max(500, ninjaSpawnInterval * 0.5);
+  ninjaFallFloor = Math.max(1800, ninjaFallDuration * 0.4);
+  ninjaLastTs = null;
+  ninjaRunning = true;
+
+  renderNinjaHud();
+  updateNinjaHintMarker();
+  const input = document.getElementById('ninja-answer-input');
+  input.disabled = false;
+  input.value = '';
+  input.focus();
+
+  restartNinjaSpawnTimer();
+  spawnKanaItem();
+  ninjaRafId = requestAnimationFrame(ninjaGameLoop);
+}
+
+function backToNinjaSetup(){
+  ninjaRunning = false;
+  if(ninjaRafId) cancelAnimationFrame(ninjaRafId);
+  clearInterval(ninjaSpawnTimer);
+  const marker = document.getElementById('ninja-hint-marker');
+  if(marker) marker.classList.remove('show');
+  document.getElementById('ninja-game-screen').style.display = 'none';
+  document.getElementById('ninja-setup-screen').style.display = 'block';
+}
+
+function stopNinjaIfRunning(){
+  ninjaRunning = false;
+  if(ninjaRafId) cancelAnimationFrame(ninjaRafId);
+  clearInterval(ninjaSpawnTimer);
+  const marker = document.getElementById('ninja-hint-marker');
+  if(marker) marker.classList.remove('show');
+}
+
+function switchTab(tab){
+  const vocabActive = tab === 'vocab';
+  const ninjaActiveTab = tab === 'ninja';
+  const dictionaryActive = tab === 'kana-dictionary';
+
+  document.getElementById('tab-vocab').classList.toggle('active', vocabActive);
+  document.getElementById('tab-ninja').classList.toggle('active', ninjaActiveTab);
+  document.getElementById('tab-kana-dictionary').classList.toggle('active', dictionaryActive);
+  document.getElementById('ledger').style.display = vocabActive ? '' : 'none';
+
+  if(!ninjaActiveTab) stopNinjaIfRunning();
+
+  document.getElementById('setup-screen').style.display = vocabActive ? 'block' : 'none';
+  document.getElementById('quiz-screen').style.display = 'none';
+  document.getElementById('ninja-setup-screen').style.display = ninjaActiveTab ? 'block' : 'none';
+  document.getElementById('ninja-game-screen').style.display = 'none';
+  document.getElementById('kana-dictionary-screen').style.display = dictionaryActive ? 'block' : 'none';
+  document.querySelector('footer.app-footer').style.display = vocabActive ? '' : 'none';
+
+  if(dictionaryActive) renderKanaDictionary();
+}
+// ==================== /KANA NINJA ====================
+
+// ---------------- global display settings (font + script colors) ----------------
+let jpFont = "'Shippori Mincho', serif";
+let colorHiragana = '#4287f5';
+let colorKatakana = '#f5c842';
+let colorKanji = '#f54242';
+
+function applyDisplaySettings(){
+  const root = document.documentElement.style;
+  root.setProperty('--font-jp-content', jpFont);
+  root.setProperty('--color-hiragana', colorHiragana);
+  root.setProperty('--color-katakana', colorKatakana);
+  root.setProperty('--color-kanji', colorKanji);
+}
+
+async function loadDisplaySettings(){
+  try{
+    const res = await window.storage.get('display-settings', false);
+    if(res && res.value){
+      const s = JSON.parse(res.value);
+      if(s.font) jpFont = s.font;
+      if(s.hira) colorHiragana = s.hira;
+      if(s.kata) colorKatakana = s.kata;
+      if(s.kanji) colorKanji = s.kanji;
+    }
+  }catch(e){ /* defaults stand */ }
+}
+
+async function saveDisplaySettings(){
+  try{
+    await window.storage.set('display-settings', JSON.stringify({
+      font: jpFont, hira: colorHiragana, kata: colorKatakana, kanji: colorKanji
+    }), false);
+  }catch(e){}
+}
+
+let progress = {};               // id -> {status, streak, seen, correct}
+let selectedCategories = new Set();
+let allCategoriesMode = true;
+let selectedModes = new Set(['kana2en']);
+let easyMode = false;
+let categoryPool = [];
+let currentCard = null;
+let currentMode = null;
+let lastCardId = null;
+let sessionOk = 0, sessionNo = 0;
+let saveTimer = null;
+
+// ---------------- progress storage ----------------
+let progressDirHandle = null;
+let progressFileWriteInFlight = false;
+let progressFileWritePending = false;
+
+function setProgressStatus(html){
+  const el = document.getElementById('progress-file-status');
+  if(el) el.innerHTML = html;
+}
+
+function makeProgressPayload(){
+  return {
+    type: 'japanese-flashcards-progress',
+    gameVersion: GAME_VERSION,
+    savedAt: new Date().toISOString(),
+    vocabularySource: vocabSourceName || '',
+    progress
+  };
+}
+
+function sanitizeProgressObject(obj){
+  const clean = {};
+  const valid = new Set(['new','learning','known','failing']);
+  if(!obj || typeof obj !== 'object') return clean;
+  Object.entries(obj).forEach(([id, p])=>{
+    if(!id || !p || typeof p !== 'object') return;
+    const status = valid.has(p.status) ? p.status : 'new';
+    clean[id] = {
+      status,
+      streak: Number.isFinite(Number(p.streak)) ? Number(p.streak) : 0,
+      seen: Number.isFinite(Number(p.seen)) ? Number(p.seen) : 0,
+      correct: Number.isFinite(Number(p.correct)) ? Number(p.correct) : 0
+    };
+  });
+  return clean;
+}
+
+function applyProgressPayload(data, sourceLabel){
+  const rawProgress = data && data.progress ? data.progress : data;
+  progress = sanitizeProgressObject(rawProgress);
+  renderLedger();
+  renderWordLibrary();
+  setProgressStatus(`Loaded <strong>${Object.keys(progress).length}</strong> progress records from <strong>${escapeHtml(sourceLabel)}</strong>.`);
+}
+
+function progressDbOpen(){
+  return new Promise((resolve, reject)=>{
+    if(!('indexedDB' in window)) return reject(new Error('IndexedDB is not available.'));
+    const req = indexedDB.open(PROGRESS_DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(PROGRESS_DB_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error || new Error('Could not open progress database.'));
+  });
+}
+
+async function rememberProgressDirectoryHandle(handle){
+  try{
+    const db = await progressDbOpen();
+    await new Promise((resolve, reject)=>{
+      const tx = db.transaction(PROGRESS_DB_STORE, 'readwrite');
+      tx.objectStore(PROGRESS_DB_STORE).put(handle, 'progressDir');
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  }catch(e){ /* not fatal; user can reconnect next time */ }
+}
+
+async function getRememberedProgressDirectoryHandle(){
+  try{
+    const db = await progressDbOpen();
+    const handle = await new Promise((resolve, reject)=>{
+      const tx = db.transaction(PROGRESS_DB_STORE, 'readonly');
+      const req = tx.objectStore(PROGRESS_DB_STORE).get('progressDir');
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return handle || null;
+  }catch(e){ return null; }
+}
+
+async function hasProgressFolderPermission(handle, write=false, ask=false){
+  if(!handle || !handle.queryPermission) return false;
+  const opts = { mode: write ? 'readwrite' : 'read' };
+  if(await handle.queryPermission(opts) === 'granted') return true;
+  if(ask && handle.requestPermission && await handle.requestPermission(opts) === 'granted') return true;
+  return false;
+}
+
+async function readProgressFromDirectory(handle, sourceLabel=PROGRESS_FILE_NAME){
+  const fileHandle = await handle.getFileHandle(PROGRESS_FILE_NAME, { create:false });
+  const file = await fileHandle.getFile();
+  const text = await file.text();
+  const data = JSON.parse(text);
+  applyProgressPayload(data, sourceLabel);
+  return true;
+}
+
+async function writeProgressToConnectedFolder(){
+  if(!progressDirHandle) return false;
+  if(!(await hasProgressFolderPermission(progressDirHandle, true, false))){
+    setProgressStatus(`Folder is remembered but needs permission again. Click <strong>Connect save folder</strong> to resume file auto-save.`);
+    return false;
+  }
+  if(progressFileWriteInFlight){
+    progressFileWritePending = true;
+    return true;
+  }
+  progressFileWriteInFlight = true;
+  try{
+    const fileHandle = await progressDirHandle.getFileHandle(PROGRESS_FILE_NAME, { create:true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(makeProgressPayload(), null, 2));
+    await writable.close();
+    setProgressStatus(`Auto-saved progress to <strong>${PROGRESS_FILE_NAME}</strong>.`);
+    return true;
+  }catch(e){
+    setProgressStatus(`<strong>Progress file auto-save failed:</strong> ${escapeHtml(e.message || e)} Use Save progress file manually.`);
+    return false;
+  }finally{
+    progressFileWriteInFlight = false;
+    if(progressFileWritePending){
+      progressFileWritePending = false;
+      writeProgressToConnectedFolder();
+    }
+  }
+}
+
+async function tryRestoreProgressFolder(){
+  const handle = await getRememberedProgressDirectoryHandle();
+  if(!handle) return false;
+  progressDirHandle = handle;
+  if(await hasProgressFolderPermission(handle, true, false)){
+    try{
+      await readProgressFromDirectory(handle, PROGRESS_FILE_NAME);
+      setProgressStatus(`Connected to remembered folder. Auto-save is on for <strong>${PROGRESS_FILE_NAME}</strong>.`);
+      return true;
+    }catch(e){
+      setProgressStatus(`Connected to remembered folder. No progress file found yet; one will be created after your next answer.`);
+      return true;
+    }
+  }
+  setProgressStatus(`A save folder was remembered, but the browser needs permission again. Click <strong>Connect save folder</strong>.`);
+  return false;
+}
+
+async function tryAutoLoadSameFolderProgress(){
+  try{
+    const res = await fetch(PROGRESS_FILE_NAME, { cache:'no-store' });
+    if(!res.ok) return false;
+    const data = await res.json();
+    applyProgressPayload(data, PROGRESS_FILE_NAME);
+    return true;
+  }catch(e){ return false; }
+}
+
+async function loadProgress(){
+  progress = {};
+  try{
+    const res = await window.storage.get(PROGRESS_STORAGE_KEY, false);
+    if(res && res.value) progress = sanitizeProgressObject(JSON.parse(res.value));
+  }catch(e){ progress = {}; }
+
+  const restored = await tryRestoreProgressFolder();
+  if(!restored && Object.keys(progress).length === 0){
+    await tryAutoLoadSameFolderProgress();
+  }
+}
+
+async function saveProgressNow(){
+  try{ await window.storage.set(PROGRESS_STORAGE_KEY, JSON.stringify(progress), false); }
+  catch(e){ /* non-fatal: keep playing in-memory */ }
+  await writeProgressToConnectedFolder();
+}
+
+function saveProgressDebounced(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveProgressNow, 250);
+}
+
+async function connectProgressFolder(){
+  if(!window.showDirectoryPicker){
+    setProgressStatus(`Folder auto-save is not available in this browser. Use <strong>Save progress file</strong> and choose the same folder manually.`);
+    return;
+  }
+  try{
+    const handle = await window.showDirectoryPicker({ mode:'readwrite' });
+    progressDirHandle = handle;
+    if(!(await hasProgressFolderPermission(handle, true, true))){
+      setProgressStatus('Folder permission was not granted.');
+      return;
+    }
+    await rememberProgressDirectoryHandle(handle);
+    try{
+      await readProgressFromDirectory(handle, PROGRESS_FILE_NAME);
+      await window.storage.set(PROGRESS_STORAGE_KEY, JSON.stringify(progress), false);
+      setProgressStatus(`Connected folder and loaded existing <strong>${PROGRESS_FILE_NAME}</strong>. Auto-save is on.`);
+    }catch(e){
+      await writeProgressToConnectedFolder();
+      setProgressStatus(`Connected folder. Created <strong>${PROGRESS_FILE_NAME}</strong>; auto-save is on.`);
+    }
+  }catch(e){
+    setProgressStatus(`<strong>Could not connect folder:</strong> ${escapeHtml(e.message || e)}`);
+  }
+}
+
+async function loadProgressFile(file){
+  try{
+    const data = JSON.parse(await file.text());
+    applyProgressPayload(data, file.name || 'progress file');
+    await saveProgressNow();
+  }catch(e){
+    setProgressStatus(`<strong>Progress file load failed:</strong> ${escapeHtml(e.message || e)}`);
+  }
+}
+
+async function saveProgressFileManually(){
+  const data = JSON.stringify(makeProgressPayload(), null, 2);
+  if(window.showSaveFilePicker){
+    try{
+      const fileHandle = await window.showSaveFilePicker({
+        suggestedName: PROGRESS_FILE_NAME,
+        types: [{ description:'JSON progress file', accept:{ 'application/json':['.json'] } }]
+      });
+      const writable = await fileHandle.createWritable();
+      await writable.write(data);
+      await writable.close();
+      setProgressStatus(`Saved progress file as <strong>${PROGRESS_FILE_NAME}</strong>.`);
+      return;
+    }catch(e){
+      if(e && e.name === 'AbortError') return;
+      setProgressStatus(`<strong>Manual save failed:</strong> ${escapeHtml(e.message || e)} Trying download instead.`);
+    }
+  }
+  const blob = new Blob([data], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = PROGRESS_FILE_NAME;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  setProgressStatus(`Downloaded <strong>${PROGRESS_FILE_NAME}</strong>. Move it beside the HTML file and load it next time if needed.`);
+}
+
+function defaultProgress(){ return { status:'new', streak:0, seen:0, correct:0 }; }
+function getProgress(id){ return progress[id] || defaultProgress(); }
+
+// ---------------- setup UI ----------------
+function buildSetupUI(){
+  const grid = document.getElementById('category-grid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  selectedCategories = new Set([...selectedCategories].filter(cat => CATEGORIES.includes(cat)));
+  allCategoriesMode = allCategoriesMode || selectedCategories.size === 0;
+
+  const allLabel = document.createElement('label');
+  allLabel.className = 'check all-cat';
+  allLabel.innerHTML = `<input type="checkbox" id="cat-all" ${allCategoriesMode?'checked':''}> All categories ${VOCAB.length?`(${VOCAB.length})`:''}`;
+  grid.appendChild(allLabel);
+
+  if(!CATEGORIES.length){
+    const empty = document.createElement('div');
+    empty.className = 'vocab-status';
+    empty.textContent = 'Load the Excel workbook to populate categories.';
+    grid.appendChild(empty);
+  }
+
+  CATEGORIES.forEach(cat=>{
+    const lab = document.createElement('label');
+    lab.className = 'check';
+    const safeId = 'cat-' + cat.replace(/[^a-zA-Z0-9]/g,'_');
+    lab.innerHTML = `<input type="checkbox" data-cat="${escapeHtml(cat)}" id="${safeId}" ${selectedCategories.has(cat)?'checked':''}> ${escapeHtml(cat)}`;
+    grid.appendChild(lab);
+  });
+
+  document.getElementById('cat-all').addEventListener('change', (e)=>{
+    allCategoriesMode = e.target.checked;
+    if(allCategoriesMode){
+      selectedCategories.clear();
+      grid.querySelectorAll('input[data-cat]').forEach(cb=>cb.checked=false);
+    }
+  });
+
+  grid.querySelectorAll('input[data-cat]').forEach(cb=>{
+    cb.addEventListener('change', (e)=>{
+      const cat = e.target.dataset.cat;
+      if(e.target.checked){ selectedCategories.add(cat); }
+      else{ selectedCategories.delete(cat); }
+      if(selectedCategories.size > 0){
+        allCategoriesMode = false;
+        document.getElementById('cat-all').checked = false;
+      } else {
+        allCategoriesMode = true;
+        document.getElementById('cat-all').checked = true;
+      }
+    });
+  });
+
+  const modeList = document.getElementById('mode-list');
+  if(!modeList) return;
+  modeList.innerHTML = '';
+  MODES.forEach(m=>{
+    const row = document.createElement('label');
+    row.className = 'mode-row';
+    row.innerHTML = `<input type="checkbox" data-mode="${m.id}" ${selectedModes.has(m.id)?'checked':''}>
+      <span class="jp">${m.jp}</span><span class="arrow">→</span><span>${m.en}</span>`;
+    modeList.appendChild(row);
+    row.querySelector('input').addEventListener('change',(e)=>{
+      if(e.target.checked) selectedModes.add(m.id); else selectedModes.delete(m.id);
+    });
+  });
+}
+
+function computeCategoryPool(){
+  if(allCategoriesMode || selectedCategories.size===0) return VOCAB;
+  return VOCAB.filter(v=>selectedCategories.has(v.c));
+}
+
+// ---------------- ledger / stats ----------------
+function renderLedger(){
+  const counts = { new:0, learning:0, known:0, failing:0 };
+  VOCAB.forEach(v=>{
+    const st = getProgress(v.id).status;
+    counts[st] = (counts[st]||0) + 1;
+  });
+  const ledger = document.getElementById('ledger');
+  ledger.innerHTML = `
+    <div class="ledger-item new"><div class="n">${counts.new}</div><div class="lab">New</div></div>
+    <div class="ledger-item learning"><div class="n">${counts.learning}</div><div class="lab">Learning</div></div>
+    <div class="ledger-item known"><div class="n">${counts.known}</div><div class="lab">Known</div></div>
+    <div class="ledger-item failing"><div class="n">${counts.failing}</div><div class="lab">Failing</div></div>
+  `;
+}
+
+// ---------------- card selection ----------------
+function weightFor(status){
+  return { failing:6, new:4, learning:3, known:1 }[status] ?? 1;
+}
+
+function pickCard(pool){
+  const weighted = pool.map(item=>{
+    const p = getProgress(item.id);
+    let w = weightFor(p.status);
+    if(item.id === lastCardId) w = Math.max(0.5, w/4);
+    return [item, w];
+  });
+  const total = weighted.reduce((s,[,w])=>s+w, 0);
+  let r = Math.random() * total;
+  for(const [item,w] of weighted){
+    r -= w;
+    if(r <= 0) return item;
+  }
+  return weighted[weighted.length-1][0];
+}
+
+function eligibleModes(){
+  return [...selectedModes].filter(mid=>{
+    const m = MODES.find(x=>x.id===mid);
+    return m && categoryPool.some(item => isItemEligibleForMode(item, m));
+  });
+}
+
+function nextRound(){
+  const modes = eligibleModes();
+  if(modes.length===0){
+    document.getElementById('card-prompt').textContent = 'No eligible cards for the selected modes/categories.';
+    return;
+  }
+  const modeId = modes[Math.floor(Math.random()*modes.length)];
+  currentMode = MODES.find(x=>x.id===modeId);
+  const pool = categoryPool.filter(i=>isItemEligibleForMode(i, currentMode));
+  currentCard = pickCard(pool);
+  lastCardId = currentCard.id;
+  renderCard();
+}
+
+function isKatakana(s){
+  return /[\u30A0-\u30FF]/.test(s || '');
+}
+
+function renderCard(){
+  document.getElementById('hanko').className = 'hanko-stamp';
+  document.getElementById('feedback-area').innerHTML = '';
+  const promptVal = getPromptValue(currentCard, currentMode) || '—';
+  document.getElementById('card-prompt').innerHTML = colorizeJP(promptVal);
+  document.getElementById('card-cat').textContent = currentCard.c;
+  document.getElementById('card-mode').textContent = currentMode.label;
+
+  const hintEl = document.getElementById('card-hint');
+  const showHint = easyMode && currentCard.r && (
+    currentMode.promptField === 'kj' || currentMode.promptField === 'kk' ||
+    (currentMode.promptField === 'k' && isKatakana(currentCard.k))
+  );
+  hintEl.textContent = showHint ? currentCard.r.split('/')[0].trim() : '';
+
+  const p = getProgress(currentCard.id);
+  const statusEl = document.getElementById('card-status');
+  statusEl.querySelector('.status-dot').className = 'status-dot ' + p.status;
+  document.getElementById('card-status-text').textContent = p.status + (p.streak>0?` · streak ${p.streak}`:'');
+  const input = document.getElementById('answer-input');
+  input.value = '';
+  input.disabled = false;
+  input.focus();
+  document.getElementById('check-btn').textContent = 'Check';
+  document.getElementById('check-btn').dataset.mode = 'check';
+}
+
+// ---------------- answer checking ----------------
+function splitAlts(s){
+  return String(s).split('/').map(x=>x.trim()).filter(Boolean);
+}
+function normalizeEN(s){
+  return s.toLowerCase().trim()
+    .replace(/^to\s+/,'')
+    .replace(/^(a|an|the)\s+/,'')
+    .replace(/[?.!,]/g,'')
+    .replace(/\s+/g,' ');
+}
+function stripDiacritics(s){
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function normalizeRomaji(s){
+  return stripDiacritics(s.toLowerCase().trim())
+    .replace(/['’\-\s]/g,'');
+}
+function normalizeKana(s){
+  return s.trim();
+}
+
+function checkAnswer(mode, item, userInput){
+  const raw = getAnswerValue(item, mode);
+  if(!raw) return false;
+  const alts = splitAlts(raw);
+  if(mode.answerField === 'e'){
+    const u = normalizeEN(userInput);
+    if(!u) return false;
+    return alts.some(a => normalizeEN(a) === u);
+  } else if(mode.answerField === 'k'){
+    const u = normalizeKana(userInput);
+    if(!u) return false;
+    return alts.some(a => normalizeKana(a) === u);
+  } else if(mode.answerField === 'r'){
+    const u = normalizeRomaji(userInput);
+    if(!u) return false;
+    return alts.some(a => normalizeRomaji(a) === u);
+  }
+  return false;
+}
+
+function updateProgress(id, correct){
+  const p = getProgress(id);
+  p.seen += 1;
+  if(correct){
+    p.correct += 1;
+    p.streak = (p.streak||0) + 1;
+    if(p.status === 'known'){
+      // recheck passed — stays known
+    } else if(p.streak >= 3){
+      p.status = 'known';
+    } else {
+      p.status = 'learning';
+    }
+  } else {
+    p.streak = 0;
+    p.status = 'failing';
+  }
+  progress[id] = p;
+  saveProgressDebounced();
+  renderLedger();
+  renderWordLibrary();
+}
+
+// ---------------- interactions ----------------
+function submitAnswer(){
+  const btn = document.getElementById('check-btn');
+  if(btn.dataset.mode === 'next'){
+    nextRound();
+    return;
+  }
+  const input = document.getElementById('answer-input');
+  const userVal = input.value;
+  const correct = checkAnswer(currentMode, currentCard, userVal);
+  updateProgress(currentCard.id, correct);
+  input.disabled = true;
+
+  const stamp = document.getElementById('hanko');
+  stamp.textContent = correct ? '正' : '✕';
+  stamp.className = 'hanko-stamp show ' + (correct ? 'correct' : 'wrong');
+
+  const fb = document.getElementById('feedback-area');
+  const acceptedAnswer = splitAlts(getAnswerValue(currentCard, currentMode))[0] || '';
+  if(correct){
+    sessionOk++;
+    fb.innerHTML = `<div class="feedback-line correct">○ Correct</div>`;
+  } else {
+    sessionNo++;
+    fb.innerHTML = `<div class="feedback-line wrong">✕ Not quite</div>
+      <div class="feedback-answer">Answer: <b>${escapeHtml(acceptedAnswer)}</b></div>`;
+  }
+  updateSessionTally();
+
+  btn.textContent = 'Next card →';
+  btn.dataset.mode = 'next';
+  input.focus();
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Wraps each character of Japanese text in a span classed by script, so the
+// global hiragana/katakana/kanji colors apply per-character within a word.
+function colorizeJP(text){
+  return Array.from(String(text)).map(ch=>{
+    const cp = ch.codePointAt(0);
+    let cls = '';
+    if(cp >= 0x3040 && cp <= 0x309F) cls = 'jp-hira';
+    else if((cp >= 0x30A0 && cp <= 0x30FF) || (cp >= 0x31F0 && cp <= 0x31FF)) cls = 'jp-kata';
+    else if((cp >= 0x4E00 && cp <= 0x9FFF) || (cp >= 0x3400 && cp <= 0x4DBF)) cls = 'jp-kanji';
+    const safe = escapeHtml(ch);
+    return cls ? `<span class="${cls}">${safe}</span>` : safe;
+  }).join('');
+}
+
+function updateSessionTally(){
+  const el = document.getElementById('session-tally');
+  el.innerHTML = `Today: <span class="ok">${sessionOk}</span> ✓ / <span class="no">${sessionNo}</span> ✕`;
+}
+
+function startSession(){
+  categoryPool = computeCategoryPool();
+  if(!VOCAB.length){
+    document.getElementById('setup-error').textContent = 'Load the Excel vocabulary file before starting practice.';
+    return;
+  }
+  if(selectedModes.size === 0){
+    document.getElementById('setup-error').textContent = 'Pick at least one mode to start.';
+    return;
+  }
+  if(categoryPool.length === 0){
+    document.getElementById('setup-error').textContent = 'Pick at least one category.';
+    return;
+  }
+  document.getElementById('setup-error').textContent = '';
+  sessionOk = 0; sessionNo = 0;
+  updateSessionTally();
+  document.getElementById('session-cat-pill').textContent =
+    (allCategoriesMode || selectedCategories.size===0) ? 'All categories' :
+    [...selectedCategories].join(', ');
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('quiz-screen').style.display = 'block';
+  lastCardId = null;
+  nextRound();
+}
+
+function backToSetup(){
+  document.getElementById('quiz-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'block';
+  renderLedger();
+}
+
+async function resetProgress(){
+  if(!confirm('Reset all known/learning/failing progress? This cannot be undone.')) return;
+  progress = {};
+  try{ await saveProgressNow(); }catch(e){}
+  renderLedger();
+  renderWordLibrary();
+}
+
+// ---------------- init ----------------
+async function init(){
+  await loadVocabulary();
+  buildSetupUI();
+  await loadProgress();
+  renderLedger();
+  refreshCategoryOptions();
+  renderWordLibrary();
+  updateVocabStatus();
+  document.getElementById('add-word-source').value = todaySourceTag();
+
+  await loadNinjaBest();
+  renderNinjaHud();
+  renderKanaDictionary();
+
+  await loadDisplaySettings();
+  applyDisplaySettings();
+  document.getElementById('jp-font-select').value = jpFont;
+  document.getElementById('color-hiragana').value = colorHiragana;
+  document.getElementById('color-katakana').value = colorKatakana;
+  document.getElementById('color-kanji').value = colorKanji;
+
+  document.getElementById('jp-font-select').addEventListener('change', (e)=>{
+    jpFont = e.target.value;
+    applyDisplaySettings();
+    saveDisplaySettings();
+  });
+  document.getElementById('color-hiragana').addEventListener('input', (e)=>{
+    colorHiragana = e.target.value;
+    applyDisplaySettings();
+  });
+  document.getElementById('color-hiragana').addEventListener('change', saveDisplaySettings);
+  document.getElementById('color-katakana').addEventListener('input', (e)=>{
+    colorKatakana = e.target.value;
+    applyDisplaySettings();
+  });
+  document.getElementById('color-katakana').addEventListener('change', saveDisplaySettings);
+  document.getElementById('color-kanji').addEventListener('input', (e)=>{
+    colorKanji = e.target.value;
+    applyDisplaySettings();
+  });
+  document.getElementById('color-kanji').addEventListener('change', saveDisplaySettings);
+
+  document.getElementById('excel-file-input').addEventListener('change', async (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    try{
+      setVocabStatus(`Loading <strong>${escapeHtml(file.name)}</strong>…`);
+      const buffer = await file.arrayBuffer();
+      await loadWorkbookFromArrayBuffer(buffer, file.name);
+      e.target.value = '';
+    }catch(err){
+      setVocabStatus(`<strong>Excel load failed:</strong> ${escapeHtml(err.message || err)}`);
+    }
+  });
+  document.getElementById('auto-load-excel-btn').addEventListener('click', async ()=>{
+    try{ await autoLoadDefaultWorkbook(true); }
+    catch(err){ setVocabStatus(`<strong>Same-folder load failed:</strong> ${escapeHtml(err.message || err)} Use Load Excel file.`); }
+  });
+  document.getElementById('export-excel-btn').addEventListener('click', exportVocabularyExcel);
+  document.getElementById('progress-connect-folder-btn').addEventListener('click', connectProgressFolder);
+  document.getElementById('progress-save-file-btn').addEventListener('click', saveProgressFileManually);
+  document.getElementById('progress-load-file-input').addEventListener('change', async (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    await loadProgressFile(file);
+    e.target.value = '';
+  });
+  document.getElementById('word-search').addEventListener('input', renderWordLibrary);
+  document.getElementById('word-status-filter').addEventListener('change', renderWordLibrary);
+  document.getElementById('add-word-form').addEventListener('submit', handleAddWord);
+
+  document.getElementById('begin-btn').addEventListener('click', startSession);
+  document.getElementById('change-settings-btn').addEventListener('click', backToSetup);
+  document.getElementById('reset-btn').addEventListener('click', resetProgress);
+  document.getElementById('check-btn').addEventListener('click', submitAnswer);
+  document.getElementById('easy-mode').addEventListener('change', (e) => {
+    easyMode = e.target.checked;
+    if (currentCard) renderCard();
+  });
+  document.getElementById('answer-input').addEventListener('keydown',(e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); submitAnswer(); }
+  });
+
+  // ---- Kana Ninja wiring ----
+  document.getElementById('tab-vocab').addEventListener('click', ()=>switchTab('vocab'));
+  document.getElementById('tab-ninja').addEventListener('click', ()=>switchTab('ninja'));
+  document.getElementById('tab-kana-dictionary').addEventListener('click', ()=>switchTab('kana-dictionary'));
+
+  document.getElementById('ninja-hiragana').addEventListener('change', (e)=>{
+    if(e.target.checked) ninjaScripts.add('hiragana'); else ninjaScripts.delete('hiragana');
+  });
+  document.getElementById('ninja-katakana').addEventListener('change', (e)=>{
+    if(e.target.checked) ninjaScripts.add('katakana'); else ninjaScripts.delete('katakana');
+  });
+  ['base','dakuten','yoon','sokuon'].forEach(group=>{
+    const cb = document.getElementById(`ninja-group-${group}`);
+    if(!cb) return;
+    cb.addEventListener('change', (e)=>{
+      if(e.target.checked) ninjaGroups.add(group); else ninjaGroups.delete(group);
+    });
+  });
+  document.getElementById('ninja-easy-mode').addEventListener('change', (e)=>{
+    ninjaEasyMode = e.target.checked;
+    document.getElementById('ninja-hint-slider').disabled = !ninjaEasyMode;
+    updateNinjaHintMarker();
+  });
+  document.getElementById('ninja-infinite-lives').addEventListener('change', (e)=>{
+    ninjaInfiniteLives = e.target.checked;
+    renderNinjaHud();
+  });
+
+  const speedSlider = document.getElementById('ninja-speed-slider');
+  const speedValueEl = document.getElementById('ninja-speed-value');
+  speedSlider.addEventListener('input', (e)=>{
+    ninjaSpeedLevel = parseInt(e.target.value, 10);
+    speedValueEl.textContent = e.target.value;
+  });
+
+  const columnsSlider = document.getElementById('ninja-columns-slider');
+  const columnsValueEl = document.getElementById('ninja-columns-value');
+  columnsSlider.addEventListener('input', (e)=>{
+    ninjaMaxColumns = parseInt(e.target.value, 10);
+    columnsValueEl.textContent = e.target.value;
+  });
+
+  const perColSlider = document.getElementById('ninja-percol-slider');
+  const perColValueEl = document.getElementById('ninja-percol-value');
+  perColSlider.addEventListener('input', (e)=>{
+    ninjaMaxPerColumn = parseInt(e.target.value, 10);
+    perColValueEl.textContent = e.target.value;
+  });
+
+  const hintSlider = document.getElementById('ninja-hint-slider');
+  const hintValueEl = document.getElementById('ninja-hint-value');
+  hintSlider.addEventListener('input', (e)=>{
+    ninjaHintThreshold = parseInt(e.target.value, 10) / 100;
+    hintValueEl.textContent = e.target.value + '%';
+    updateNinjaHintMarker();
+  });
+
+  document.getElementById('ninja-begin-btn').addEventListener('click', startNinjaGame);
+  document.getElementById('ninja-change-settings-btn').addEventListener('click', backToNinjaSetup);
+  document.getElementById('ninja-replay-btn').addEventListener('click', startNinjaGame);
+  document.getElementById('ninja-back-btn').addEventListener('click', backToNinjaSetup);
+  document.getElementById('ninja-slice-btn').addEventListener('click', ninjaSubmitAnswer);
+  document.getElementById('ninja-answer-input').addEventListener('input', ninjaHandleInput);
+  document.getElementById('ninja-answer-input').addEventListener('keydown',(e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); ninjaSubmitAnswer(); }
+  });
+  window.addEventListener('resize', updateNinjaHintMarker);
+}
+init();
+</script>
+</body>
+</html>
