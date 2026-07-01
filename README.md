@@ -21,6 +21,8 @@ This project was **mostly vibe coded**. It works for the intended personal study
   - English → Kana
   - Kana → English
   - Kanji / Japanese form → English
+  - Romaji → English
+  - English → Romaji
   - Kana → Romaji
   - Kanji + kana → Romaji
 - Tracks learning progress with statuses such as new, learning, known, and failing.
@@ -94,13 +96,13 @@ A typical repo layout could look like this:
 
 ```text
 .
-├── index.html
+├── japanese_flashcards_excel_loader.html
 ├── japanese_vocabulary_by_category.xlsx
 ├── japanese_flashcards_progress.json
 └── README.md
 ```
 
-You can rename the HTML file to `index.html` if you want GitHub Pages or a simple static server to open it more easily.
+The app looks for `japanese_vocabulary_by_category.xlsx` by name (via the "Try same-folder Excel" button), so keep that filename as-is. You can rename the HTML file to `index.html` if you want GitHub Pages or a simple static server to open it more easily — just update any links/shortcuts accordingly.
 
 ## Running Locally
 
@@ -121,7 +123,7 @@ python -m http.server 8000
 Then open:
 
 ```text
-http://localhost:8000
+http://localhost:8000/japanese_flashcards_excel_loader.html
 ```
 
 This usually gives better results for loading files from the same folder.
