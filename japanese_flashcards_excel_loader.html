@@ -1170,7 +1170,7 @@
       <h2><span class="eyebrow">設定</span> Options</h2>
       <label class="check easy-toggle">
         <input type="checkbox" id="easy-mode">
-        Easy mode — show romaji hint above 漢字 and カタカナ prompts
+        Easy mode — show romaji hints above Japanese prompts when it does not give away the answer
       </label>
     </div>
 
@@ -2545,6 +2545,19 @@ function isKatakana(s){
   return /[\u30A0-\u30FF]/.test(s || '');
 }
 
+function firstRomajiHint(item){
+  const romaji = firstValue(item && item.r);
+  return romaji ? romaji.split('/')[0].trim() : '';
+}
+
+function shouldShowRomajiHint(item, mode){
+  if(!easyMode || !item || !mode || !firstRomajiHint(item)) return false;
+  // Do not show the hint when the selected drill is asking for romaji,
+  // because that would reveal the answer instead of just helping pronunciation.
+  if(mode.answerField === 'r') return false;
+  return ['k', 'kj', 'kk'].includes(mode.promptField);
+}
+
 function renderCard(){
   document.getElementById('hanko').className = 'hanko-stamp';
   document.getElementById('feedback-area').innerHTML = '';
@@ -2554,11 +2567,8 @@ function renderCard(){
   document.getElementById('card-mode').textContent = currentMode.label;
 
   const hintEl = document.getElementById('card-hint');
-  const showHint = easyMode && currentCard.r && (
-    currentMode.promptField === 'kj' || currentMode.promptField === 'kk' ||
-    (currentMode.promptField === 'k' && isKatakana(currentCard.k))
-  );
-  hintEl.textContent = showHint ? currentCard.r.split('/')[0].trim() : '';
+  const showHint = shouldShowRomajiHint(currentCard, currentMode);
+  hintEl.textContent = showHint ? firstRomajiHint(currentCard) : '';
 
   const p = getProgress(currentCard.id);
   const statusEl = document.getElementById('card-status');
