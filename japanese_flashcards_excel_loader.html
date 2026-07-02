@@ -2278,12 +2278,12 @@ let ninjaRunning = false;
 let ninjaRafId = null;
 let ninjaSpawnTimer = null;
 let ninjaSpawnInterval = 1700;
-let ninjaFallDuration = 7500; // ms to cross the arena at current difficulty
+let ninjaFallDuration = 15000; // ms to cross the arena at current difficulty
 let ninjaLastTs = null;
 
 function speedLevelToFallDuration(level){
-  // level 1 -> 10000ms (slow), level 10 -> 3000ms (fast)
-  return 20000 - (level - 1) * (7000 / 9);
+  // level 1 -> 40000ms (slow), level 10 -> 26000ms (fast)
+  return 40000 - (level - 1) * (14000 / 9);
 }
 function speedLevelToSpawnInterval(level){
   // level 1 -> 2200ms between spawns, level 10 -> 700ms
@@ -2331,6 +2331,32 @@ function updateNinjaHintMarker(){
   marker.classList.toggle('show', ninjaEasyMode);
 }
 
+function ninjaLaneLayout(arenaHeight){
+  const rows = Math.max(1, ninjaMaxColumns);
+  // Split the arena into rows + (rows-1) equal segments — one segment per
+  // lane plus one gap segment between each pair of lanes (e.g. 3 rows -> 5
+  // segments, "3+2"). Lane centers sit in the middle of their own segment,
+  // which spaces them out uniformly with equal breathing room above the
+  // first lane, between every lane, and below the last lane.
+  const segments = rows * 2 - 1;
+  const segH = arenaHeight / segments;
+  // Match the responsive glyph size (see the 480px media query) so the
+  // clamp below is accurate on mobile too.
+  const isMobile = window.matchMedia('(max-width: 480px)').matches;
+  const glyphSize = isMobile ? 46 : 56;
+  // Half the total rendered height of a .kana-item (glyph + gap + romaji
+  // hint beneath it), since the item is centered on its y via
+  // translate(-50%, -50%). Padding included so the hint text never gets
+  // clipped by the arena's overflow:hidden edge.
+  const halfItem = glyphSize / 2 + 16;
+  const laneCenter = lane => (2 * lane + 0.5) * segH;
+  // Kana within a lane may still jitter a little so several at once don't
+  // sit on an identical line, but never enough to spill into a neighbouring
+  // lane or past the top/bottom edge of the arena.
+  const jitter = Math.max(0, Math.min(segH - halfItem, segH * 0.6));
+  return { laneCenter, halfItem, jitter, arenaHeight };
+}
+
 function ninjaArena(){ return document.getElementById('ninja-arena'); }
 
 function ninjaColumnCounts(){
@@ -2361,9 +2387,9 @@ function spawnKanaItem(){
   const choice = pool[Math.floor(Math.random()*pool.length)];
 
   const lane = availableLanes[Math.floor(Math.random()*availableLanes.length)];
-  const laneHeight = arenaHeight / ninjaMaxColumns;
-  const margin = Math.min(24, laneHeight * 0.22);
-  const y = lane * laneHeight + margin + Math.random() * Math.max(1, (laneHeight - margin*2));
+  const { laneCenter, halfItem, jitter } = ninjaLaneLayout(arenaHeight);
+  let y = laneCenter(lane) + (Math.random() * 2 - 1) * jitter;
+  y = Math.max(halfItem, Math.min(arenaHeight - halfItem, y));
 
   // All kana enter from the same side and travel across to the other.
   const dir = 1; // 1 = enters left, travels right
@@ -2452,12 +2478,12 @@ function sliceKanaItem(item){
 }
 
 let ninjaSpawnFloor = 500;
-let ninjaFallFloor = 1800;
+let ninjaFallFloor = 3600;
 
 function rampNinjaDifficulty(){
   if(ninjaScore > 0 && ninjaScore % 5 === 0){
     ninjaSpawnInterval = Math.max(ninjaSpawnFloor, ninjaSpawnInterval - 120);
-    ninjaFallDuration = Math.max(ninjaFallFloor, ninjaFallDuration - 350);
+    ninjaFallDuration = Math.max(ninjaFallFloor, ninjaFallDuration - 700);
     restartNinjaSpawnTimer();
   }
 }
@@ -2551,7 +2577,7 @@ function startNinjaGame(){
   ninjaSpawnInterval = speedLevelToSpawnInterval(ninjaSpeedLevel);
   ninjaFallDuration = speedLevelToFallDuration(ninjaSpeedLevel);
   ninjaSpawnFloor = Math.max(500, ninjaSpawnInterval * 0.5);
-  ninjaFallFloor = Math.max(1800, ninjaFallDuration * 0.4);
+  ninjaFallFloor = Math.max(3600, ninjaFallDuration * 0.4);
   ninjaLastTs = null;
   ninjaRunning = true;
 
