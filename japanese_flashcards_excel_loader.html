@@ -849,8 +849,18 @@
   .dict-result:hover{ background: rgba(90,74,58,0.08); }
   .dict-result:last-child{ border-bottom:0; }
   .dict-result .dict-jp{ font-family: var(--font-jp-content); font-weight:700; font-size: 1rem; }
+  .dict-result .dict-romaji{ font-family: var(--font-mono); font-size: 0.8rem; color: var(--indigo); }
   .dict-result .dict-en{ font-size: 0.8rem; color: var(--ink-soft); }
   .dict-result .dict-tags{ font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-soft); }
+
+  /* ---------- Dictionary tab ---------- */
+  #dictionary-screen{ display:none; }
+  .dict-lookup-results-standalone{
+    max-height: 420px;
+    cursor: default;
+  }
+  .dict-lookup-results-standalone .dict-result{ cursor: default; }
+  .dict-lookup-results-standalone .dict-result:hover{ background: transparent; }
 
   /* ---------- Kana Dictionary ---------- */
   #kana-dictionary-screen{ display:none; }
@@ -956,6 +966,7 @@
   <nav class="app-tabs">
     <button id="tab-vocab" class="active"><span class="jp">単語帳</span>Vocab Drill</button>
     <button id="tab-ninja"><span class="jp">かなニンジャ</span>Kana Ninja</button>
+    <button id="tab-dictionary"><span class="jp">辞書</span>Dictionary</button>
     <button id="tab-kana-dictionary"><span class="jp">かな表</span>Kana Dictionary</button>
   </nav>
 
@@ -992,6 +1003,36 @@
     </div>
   </div>
 
+
+  <!-- ===================== DICTIONARY ===================== -->
+  <div id="dictionary-screen">
+    <div class="panel" id="dict-search-panel">
+      <h2><span class="eyebrow">検索</span> Look up a word</h2>
+      <p class="progress-help">Search by <strong>English</strong> meaning, or by <strong>rōmaji</strong> (typed as English letters, e.g. "neko" or "tabemono"). Every result shows its rōmaji reading alongside the kana/kanji and English gloss.</p>
+      <div class="dict-lookup-row">
+        <input type="text" id="dict-search-input" placeholder="Search rōmaji and/or English… e.g. “cat” or “neko”">
+        <button class="btn btn-ghost" id="dict-search-btn" type="button" style="width:auto; margin-top:0;">Search</button>
+      </div>
+      <div class="dict-lookup-results dict-lookup-results-standalone" id="dict-search-results"></div>
+    </div>
+
+    <div class="panel" id="dictionary-panel">
+      <h2><span class="eyebrow">辞書</span> Dictionary data (optional)</h2>
+      <p class="progress-help">
+        Loading the free <strong>JMdict</strong> dictionary powers the word lookup above and lets “Add a new word” look up kanji, kana, and romaji for you automatically — the app still works fully without it.
+        Click <strong>“Download dictionary”</strong> to fetch the current common-words JMdict file straight from GitHub and save it next to this app — after that, everything works offline. Everything runs locally in your browser; the file is never uploaded anywhere.
+      </p>
+      <div class="data-actions">
+        <button class="btn btn-primary" id="download-dict-btn" type="button" style="width:auto; margin-top:0;">⬇ Download dictionary</button>
+        <label class="btn btn-ghost file-btn" for="dict-file-input">Load dictionary file
+          <input type="file" id="dict-file-input" accept=".json,.zip,application/json,application/zip">
+        </label>
+        <button class="btn btn-ghost" id="auto-load-dict-btn" type="button">Try same-folder dictionary</button>
+        <button class="btn btn-ghost" id="clear-dict-btn" type="button">Unload dictionary</button>
+      </div>
+      <div class="vocab-status" id="dict-status">No dictionary loaded. Word lookup is hidden until one is loaded.</div>
+    </div>
+  </div>
 
   <!-- ===================== KANA DICTIONARY ===================== -->
   <div id="kana-dictionary-screen">
@@ -1136,23 +1177,6 @@
       </div>
       <div class="vocab-status" id="progress-file-status">Progress saves in this browser. Connect a folder to also keep <strong>japanese_flashcards_progress.json</strong> beside the app.</div>
       <div class="progress-help">Use <strong>Connect save folder</strong> once, then the app auto-updates the JSON file after each answer. If your browser blocks folder access, use <strong>Save progress file</strong> and <strong>Load progress file</strong> manually.</div>
-    </div>
-
-    <div class="panel" id="dictionary-panel">
-      <h2><span class="eyebrow">辞書</span> Dictionary (optional)</h2>
-      <p class="progress-help">
-        Loading the free <strong>JMdict</strong> dictionary lets “Add a new word” look up kanji, kana, and romaji for you automatically — the app still works fully without it.
-        Click <strong>“Download dictionary”</strong> to fetch the current common-words JMdict file straight from GitHub and save it next to this app — after that, everything works offline. Everything runs locally in your browser; the file is never uploaded anywhere.
-      </p>
-      <div class="data-actions">
-        <button class="btn btn-primary" id="download-dict-btn" type="button" style="width:auto; margin-top:0;">⬇ Download dictionary</button>
-        <label class="btn btn-ghost file-btn" for="dict-file-input">Load dictionary file
-          <input type="file" id="dict-file-input" accept=".json,.zip,application/json,application/zip">
-        </label>
-        <button class="btn btn-ghost" id="auto-load-dict-btn" type="button">Try same-folder dictionary</button>
-        <button class="btn btn-ghost" id="clear-dict-btn" type="button">Unload dictionary</button>
-      </div>
-      <div class="vocab-status" id="dict-status">No dictionary loaded. Word lookup in “Add a new word” is hidden until one is loaded.</div>
     </div>
 
     <div class="panel" id="word-library-panel">
@@ -1641,11 +1665,12 @@ function buildDictSearchBlobs(words){
   return words.map(w => {
     const kanjiTexts = (w.kanji || []).map(k => k.text);
     const kanaTexts = (w.kana || []).map(k => k.text);
+    const romajiTexts = kanaTexts.map(k => kanaToRomaji(k)).filter(Boolean);
     const glosses = [];
     (w.sense || []).forEach(sn => (sn.gloss || []).forEach(g => { if(g.text) glosses.push(g.text); }));
     return {
-      kanji: kanjiTexts, kana: kanaTexts, glosses,
-      blob: [...kanjiTexts, ...kanaTexts, ...glosses].join(' | ').toLowerCase(),
+      kanji: kanjiTexts, kana: kanaTexts, romaji: romajiTexts, glosses,
+      blob: [...kanjiTexts, ...kanaTexts, ...romajiTexts, ...glosses].join(' | ').toLowerCase(),
     };
   });
 }
@@ -1794,10 +1819,10 @@ function searchDictionary(query, limit=20){
   for(let i = 0; i < JMDICT.words.length; i++){
     const b = JMDICT_BLOBS[i];
     if(!b.blob.includes(q)) continue;
-    // rank: exact gloss match > gloss starts-with > any substring
+    // rank: exact gloss/romaji match > starts-with > any substring
     let score = 3;
-    if(b.glosses.some(g => g.toLowerCase() === q)) score = 0;
-    else if(b.glosses.some(g => g.toLowerCase().startsWith(q))) score = 1;
+    if(b.glosses.some(g => g.toLowerCase() === q) || b.romaji.some(r => r.toLowerCase() === q)) score = 0;
+    else if(b.glosses.some(g => g.toLowerCase().startsWith(q)) || b.romaji.some(r => r.toLowerCase().startsWith(q))) score = 1;
     else if(b.kanji.includes(query) || b.kana.includes(query)) score = 1;
     scored.push({ i, score });
     if(scored.length > 4000) break; // safety valve on pathological queries
@@ -1814,24 +1839,31 @@ function bestKanjiKana(word){
   return { kanji, kana };
 }
 
-function renderDictResults(words){
-  const box = document.getElementById('dict-lookup-results');
+function renderDictResults(words, opts={}){
+  const boxId = opts.targetId || 'dict-lookup-results';
+  const clickable = opts.clickable !== false; // default true (fills the "Add a new word" form)
+  const box = document.getElementById(boxId);
+  if(!box) return;
   if(!words.length){ box.innerHTML = '<div class="empty" style="padding:12px; text-align:center; color:var(--ink-soft);">No matches.</div>'; return; }
   box.innerHTML = words.map((w, idx) => {
     const { kanji, kana } = bestKanjiKana(w);
     const jp = kanji ? `${kanji}（${kana}）` : kana;
+    const romaji = kanaToRomaji(kana);
     const glosses = [];
     (w.sense || []).forEach(sn => (sn.gloss || []).forEach(g => { if(g.text && !glosses.includes(g.text)) glosses.push(g.text); }));
     const pos = (w.sense && w.sense[0] && w.sense[0].partOfSpeech || []).map(code => (JMDICT.tags && JMDICT.tags[code]) || code).join(', ');
     return `<div class="dict-result" data-idx="${idx}">
       <span class="dict-jp">${escapeHtml(jp)}</span>
+      <span class="dict-romaji">${escapeHtml(romaji)}</span>
       <span class="dict-en">${escapeHtml(glosses.slice(0,6).join(' / '))}</span>
       ${pos ? `<span class="dict-tags">${escapeHtml(pos)}</span>` : ''}
     </div>`;
   }).join('');
-  box.querySelectorAll('.dict-result').forEach(el => {
-    el.addEventListener('click', () => applyDictWordToForm(words[Number(el.dataset.idx)]));
-  });
+  if(clickable){
+    box.querySelectorAll('.dict-result').forEach(el => {
+      el.addEventListener('click', () => applyDictWordToForm(words[Number(el.dataset.idx)]));
+    });
+  }
 }
 
 function applyDictWordToForm(word){
@@ -1985,7 +2017,7 @@ function renderWordLibrary(){
     return `<tr>
       <td><span class="status-mini">${escapeHtml(st)}</span></td>
       <td>${escapeHtml(v.c)}</td>
-      <td>${escapeHtml(v.e)}</td>
+      <td>${escapeHtml(splitAlts(v.e).join(' / '))}</td>
       <td class="jp-cell">${colorizeJP(v.kk || v.kj || v.k)}</td>
       <td>${escapeHtml(v.r)}</td>
     </tr>`;
@@ -2556,11 +2588,13 @@ function stopNinjaIfRunning(){
 function switchTab(tab){
   const vocabActive = tab === 'vocab';
   const ninjaActiveTab = tab === 'ninja';
-  const dictionaryActive = tab === 'kana-dictionary';
+  const dictActive = tab === 'dictionary';
+  const kanaDictActive = tab === 'kana-dictionary';
 
   document.getElementById('tab-vocab').classList.toggle('active', vocabActive);
   document.getElementById('tab-ninja').classList.toggle('active', ninjaActiveTab);
-  document.getElementById('tab-kana-dictionary').classList.toggle('active', dictionaryActive);
+  document.getElementById('tab-dictionary').classList.toggle('active', dictActive);
+  document.getElementById('tab-kana-dictionary').classList.toggle('active', kanaDictActive);
   document.getElementById('ledger').style.display = vocabActive ? '' : 'none';
 
   if(!ninjaActiveTab) stopNinjaIfRunning();
@@ -2569,10 +2603,12 @@ function switchTab(tab){
   document.getElementById('quiz-screen').style.display = 'none';
   document.getElementById('ninja-setup-screen').style.display = ninjaActiveTab ? 'block' : 'none';
   document.getElementById('ninja-game-screen').style.display = 'none';
-  document.getElementById('kana-dictionary-screen').style.display = dictionaryActive ? 'block' : 'none';
+  document.getElementById('dictionary-screen').style.display = dictActive ? 'block' : 'none';
+  document.getElementById('kana-dictionary-screen').style.display = kanaDictActive ? 'block' : 'none';
   document.querySelector('footer.app-footer').style.display = vocabActive ? '' : 'none';
 
-  if(dictionaryActive) renderKanaDictionary();
+  if(kanaDictActive) renderKanaDictionary();
+  if(dictActive) updateDictUI();
 }
 // ==================== /KANA NINJA ====================
 
@@ -3044,8 +3080,28 @@ function renderCard(){
 }
 
 // ---------------- answer checking ----------------
+// Removes parenthetical notes like "(colour)" or "(e.g. disposition)" from a
+// meaning, e.g. "bright (colour)" -> "bright". Handles nested parens and
+// tidies up any double spaces left behind.
+function stripParens(s){
+  let out = String(s || '');
+  let prev;
+  do{
+    prev = out;
+    out = out.replace(/\s*\([^()]*\)/g, '');
+  }while(out !== prev);
+  return out.replace(/\s+/g, ' ').trim();
+}
 function splitAlts(s){
-  return String(s).split('/').map(x=>x.trim()).filter(Boolean);
+  const seen = new Set();
+  const out = [];
+  String(s).split('/').map(x => stripParens(x)).filter(Boolean).forEach(alt => {
+    const key = alt.toLowerCase();
+    if(seen.has(key)) return;
+    seen.add(key);
+    out.push(alt);
+  });
+  return out;
 }
 function normalizeEN(s){
   return s.toLowerCase().trim()
@@ -3323,6 +3379,21 @@ async function init(){
     }
   });
 
+  // ---- Dictionary tab: standalone romaji/English lookup ----
+  const runDictSearch = ()=>{
+    const q = document.getElementById('dict-search-input').value;
+    if(!isDictLoaded()){
+      document.getElementById('dict-search-results').innerHTML =
+        '<div class="empty" style="padding:12px; text-align:center; color:var(--ink-soft);">Load the dictionary below first.</div>';
+      return;
+    }
+    renderDictResults(searchDictionary(q, 40), { targetId: 'dict-search-results', clickable: false });
+  };
+  document.getElementById('dict-search-btn').addEventListener('click', runDictSearch);
+  document.getElementById('dict-search-input').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); runDictSearch(); }
+  });
+
   document.getElementById('begin-btn').addEventListener('click', startSession);
   document.getElementById('change-settings-btn').addEventListener('click', backToSetup);
   document.getElementById('reset-btn').addEventListener('click', resetProgress);
@@ -3338,6 +3409,7 @@ async function init(){
   // ---- Kana Ninja wiring ----
   document.getElementById('tab-vocab').addEventListener('click', ()=>switchTab('vocab'));
   document.getElementById('tab-ninja').addEventListener('click', ()=>switchTab('ninja'));
+  document.getElementById('tab-dictionary').addEventListener('click', ()=>switchTab('dictionary'));
   document.getElementById('tab-kana-dictionary').addEventListener('click', ()=>switchTab('kana-dictionary'));
 
   document.getElementById('ninja-hiragana').addEventListener('change', (e)=>{
