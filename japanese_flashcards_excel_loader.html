@@ -813,6 +813,44 @@
     margin-top: 12px;
     flex-wrap:wrap;
   }
+  .dict-lookup-row{
+    display:flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap:wrap;
+  }
+  .dict-lookup-row input{
+    flex: 1 1 220px;
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1.5px solid var(--ink-soft);
+    border-radius: 8px;
+    padding: 9px 10px;
+  }
+  .dict-lookup-results{
+    max-height: 220px;
+    overflow:auto;
+    border: 1px solid var(--paper-line);
+    border-radius: 10px;
+    background: rgba(244,240,230,0.35);
+    margin-bottom: 12px;
+  }
+  .dict-lookup-results:empty{ display:none; margin:0; border:0; }
+  .dict-result{
+    display:flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--paper-line);
+    cursor: pointer;
+  }
+  .dict-result:hover{ background: rgba(90,74,58,0.08); }
+  .dict-result:last-child{ border-bottom:0; }
+  .dict-result .dict-jp{ font-family: var(--font-jp-content); font-weight:700; font-size: 1rem; }
+  .dict-result .dict-en{ font-size: 0.8rem; color: var(--ink-soft); }
+  .dict-result .dict-tags{ font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-soft); }
 
   /* ---------- Kana Dictionary ---------- */
   #kana-dictionary-screen{ display:none; }
@@ -902,6 +940,7 @@
 
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -1081,6 +1120,7 @@
         </label>
         <button class="btn btn-ghost" id="auto-load-excel-btn" type="button">Try same-folder Excel</button>
         <button class="btn btn-ghost" id="export-excel-btn" type="button">Export updated Excel</button>
+        <button class="btn btn-ghost" id="enrich-vocab-btn" type="button">✨ Add meanings from dictionary</button>
       </div>
       <div class="vocab-status" id="vocab-source-status">No vocabulary loaded yet.</div>
     </div>
@@ -1098,10 +1138,27 @@
       <div class="progress-help">Use <strong>Connect save folder</strong> once, then the app auto-updates the JSON file after each answer. If your browser blocks folder access, use <strong>Save progress file</strong> and <strong>Load progress file</strong> manually.</div>
     </div>
 
+    <div class="panel" id="dictionary-panel">
+      <h2><span class="eyebrow">辞書</span> Dictionary (optional)</h2>
+      <p class="progress-help">
+        Loading the free <strong>JMdict</strong> dictionary lets “Add a new word” look up kanji, kana, and romaji for you automatically — the app still works fully without it.
+        Click <strong>“Download dictionary”</strong> to fetch the current common-words JMdict file straight from GitHub and save it next to this app — after that, everything works offline. Everything runs locally in your browser; the file is never uploaded anywhere.
+      </p>
+      <div class="data-actions">
+        <button class="btn btn-primary" id="download-dict-btn" type="button" style="width:auto; margin-top:0;">⬇ Download dictionary</button>
+        <label class="btn btn-ghost file-btn" for="dict-file-input">Load dictionary file
+          <input type="file" id="dict-file-input" accept=".json,.zip,application/json,application/zip">
+        </label>
+        <button class="btn btn-ghost" id="auto-load-dict-btn" type="button">Try same-folder dictionary</button>
+        <button class="btn btn-ghost" id="clear-dict-btn" type="button">Unload dictionary</button>
+      </div>
+      <div class="vocab-status" id="dict-status">No dictionary loaded. Word lookup in “Add a new word” is hidden until one is loaded.</div>
+    </div>
+
     <div class="panel" id="word-library-panel">
       <h2><span class="eyebrow">単語</span> Browse / add words</h2>
       <div class="library-toolbar">
-        <input type="search" id="word-search" placeholder="Search English, kana, kanji, romaji, category…">
+        <input type="search" id="word-search" placeholder="Search English, romaji, category…">
         <select id="word-status-filter" aria-label="Filter words by learning status">
           <option value="known">Known words</option>
           <option value="all">All words</option>
@@ -1115,6 +1172,11 @@
       <details class="add-word-box">
         <summary>＋ Add a new word</summary>
         <form id="add-word-form">
+          <div class="dict-lookup-row" id="dict-lookup-row" style="display:none;">
+            <input type="text" id="dict-lookup-input" placeholder="Look up an English word in the dictionary…">
+            <button class="btn btn-ghost" id="dict-lookup-btn" type="button" style="width:auto; margin-top:0;">Look up</button>
+          </div>
+          <div class="dict-lookup-results" id="dict-lookup-results"></div>
           <div class="add-word-grid">
             <label>Category
               <input id="add-word-category" list="category-options" required placeholder="e.g. Food & drinks">
@@ -1219,6 +1281,8 @@ const PROGRESS_STORAGE_KEY = 'flashcard-progress';
 const PROGRESS_FILE_NAME = 'japanese_flashcards_progress.json';
 const PROGRESS_DB_NAME = 'jp-flashcards-progress-db';
 const PROGRESS_DB_STORE = 'handles';
+const DICT_STORAGE_KEY = 'flashcard-jmdict-v1';
+const DEFAULT_DICT_FILES = ['jmdict-eng.json', 'jmdict-eng.json.zip', 'jmdict-eng-common.json', 'jmdict-eng-common.json.zip'];
 
 // Browser fallback for running the HTML outside ChatGPT artifacts.
 if(!window.storage){
@@ -1238,6 +1302,10 @@ let VOCAB = [];
 let vocabSourceName = '';
 let vocabLoadedAt = '';
 let CATEGORIES = [];
+let JMDICT = null;          // { words:[...], tags:{...} } parsed jmdict-simplified data
+let JMDICT_BLOBS = null;    // parallel array of lowercase search blobs, built once at load
+let JMDICT_BY_KANA = null;  // Map: kana reading -> [dictionary words], for fast exact lookups
+let jmdictSourceName = '';
 
 const EXCEL_HEADERS = [
   'ID',
@@ -1461,6 +1529,391 @@ function refreshVocabUI(){
   updateVocabStatus();
 }
 
+/* ===================== JMdict (optional offline dictionary) ===================== */
+
+function setDictStatus(html){
+  const el = document.getElementById('dict-status');
+  if(el) el.innerHTML = html;
+}
+
+function isDictLoaded(){ return !!(JMDICT && Array.isArray(JMDICT.words) && JMDICT.words.length); }
+
+function updateDictUI(){
+  const row = document.getElementById('dict-lookup-row');
+  if(row) row.style.display = isDictLoaded() ? 'flex' : 'none';
+  if(!isDictLoaded()){
+    setDictStatus('No dictionary loaded. Word lookup in “Add a new word” is hidden until one is loaded.');
+    return;
+  }
+  setDictStatus(`Using <strong>${JMDICT.words.length.toLocaleString()}</strong> dictionary entries from <strong>${escapeHtml(jmdictSourceName)}</strong>.`);
+}
+
+// Hepburn-ish kana -> romaji converter, good enough for auto-filling the Romaji field.
+const KANA_ROMAJI_MAP = (() => {
+  const base = {
+    'あ':'a','い':'i','う':'u','え':'e','お':'o',
+    'か':'ka','き':'ki','く':'ku','け':'ke','こ':'ko',
+    'が':'ga','ぎ':'gi','ぐ':'gu','げ':'ge','ご':'go',
+    'さ':'sa','し':'shi','す':'su','せ':'se','そ':'so',
+    'ざ':'za','じ':'ji','ず':'zu','ぜ':'ze','ぞ':'zo',
+    'た':'ta','ち':'chi','つ':'tsu','て':'te','と':'to',
+    'だ':'da','ぢ':'ji','づ':'zu','で':'de','ど':'do',
+    'な':'na','に':'ni','ぬ':'nu','ね':'ne','の':'no',
+    'は':'ha','ひ':'hi','ふ':'fu','へ':'he','ほ':'ho',
+    'ば':'ba','び':'bi','ぶ':'bu','べ':'be','ぼ':'bo',
+    'ぱ':'pa','ぴ':'pi','ぷ':'pu','ぺ':'pe','ぽ':'po',
+    'ま':'ma','み':'mi','む':'mu','め':'me','も':'mo',
+    'や':'ya','ゆ':'yu','よ':'yo',
+    'ら':'ra','り':'ri','る':'ru','れ':'re','ろ':'ro',
+    'わ':'wa','ゐ':'i','ゑ':'e','を':'wo','ん':'n',
+    'ー':'-',
+    'ゃ':'ya','ゅ':'yu','ょ':'yo','ぁ':'a','ぃ':'i','ぅ':'u','ぇ':'e','ぉ':'o',
+  };
+  const yoon = {
+    'きゃ':'kya','きゅ':'kyu','きょ':'kyo','ぎゃ':'gya','ぎゅ':'gyu','ぎょ':'gyo',
+    'しゃ':'sha','しゅ':'shu','しょ':'sho','じゃ':'ja','じゅ':'ju','じょ':'jo',
+    'ちゃ':'cha','ちゅ':'chu','ちょ':'cho','ぢゃ':'ja','ぢゅ':'ju','ぢょ':'jo',
+    'にゃ':'nya','にゅ':'nyu','にょ':'nyo',
+    'ひゃ':'hya','ひゅ':'hyu','ひょ':'hyo','びゃ':'bya','びゅ':'byu','びょ':'byo',
+    'ぴゃ':'pya','ぴゅ':'pyu','ぴょ':'pyo',
+    'みゃ':'mya','みゅ':'myu','みょ':'myo',
+    'りゃ':'rya','りゅ':'ryu','りょ':'ryo',
+    'ふぁ':'fa','ふぃ':'fi','ふぇ':'fe','ふぉ':'fo',
+    'ゔぁ':'va','ゔぃ':'vi','ゔ':'vu','ゔぇ':'ve','ゔぉ':'vo',
+    'てぃ':'ti','でぃ':'di','とぅ':'tou','どぅ':'du',
+    'ちぇ':'che','じぇ':'je','しぇ':'she',
+  };
+  const map = { ...yoon };
+  for(const k in base) map[k] = base[k];
+  return { map, yoon, base };
+})();
+
+function katakanaToHiragana(s){
+  return s.replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+}
+
+function kanaToRomaji(kana){
+  if(!kana) return '';
+  const s = katakanaToHiragana(kana);
+  const { map, yoon } = KANA_ROMAJI_MAP;
+  let out = '';
+  let i = 0;
+  while(i < s.length){
+    const two = s.slice(i, i+2);
+    if(yoon[two]){ out += yoon[two]; i += 2; continue; }
+    const ch = s[i];
+    if(ch === 'っ'){
+      // small tsu: double the following consonant
+      const next = s[i+1];
+      const nextRomaji = yoon[s.slice(i+1,i+3)] || map[next] || '';
+      const consonant = nextRomaji.replace(/^ch/,'t')[0] || '';
+      out += consonant;
+      i += 1;
+      continue;
+    }
+    if(ch === 'ん'){
+      const next = s[i+1];
+      out += (next && /[あいうえおやゆよ]/.test(next)) ? "n'" : 'n';
+      i += 1;
+      continue;
+    }
+    if(map[ch] !== undefined){ out += map[ch]; i += 1; continue; }
+    out += ch; // pass through anything unrecognized (romaji, punctuation, etc.)
+    i += 1;
+  }
+  return out;
+}
+
+function decodeMaybeZip(buffer, sourceName){
+  const bytes = new Uint8Array(buffer);
+  const isZip = bytes.length > 2 && bytes[0] === 0x50 && bytes[1] === 0x4B; // "PK"
+  if(!isZip) return new TextDecoder('utf-8').decode(bytes);
+  if(typeof fflate === 'undefined'){
+    throw new Error('This is a .zip file, but the unzip library did not load (check your internet connection). Unzip it yourself and load the .json file instead.');
+  }
+  const files = fflate.unzipSync(bytes);
+  const jsonName = Object.keys(files).find(n => n.toLowerCase().endsWith('.json'));
+  if(!jsonName) throw new Error(`No .json file found inside ${sourceName}.`);
+  return fflate.strFromU8(files[jsonName]);
+}
+
+function buildDictSearchBlobs(words){
+  return words.map(w => {
+    const kanjiTexts = (w.kanji || []).map(k => k.text);
+    const kanaTexts = (w.kana || []).map(k => k.text);
+    const glosses = [];
+    (w.sense || []).forEach(sn => (sn.gloss || []).forEach(g => { if(g.text) glosses.push(g.text); }));
+    return {
+      kanji: kanjiTexts, kana: kanaTexts, glosses,
+      blob: [...kanjiTexts, ...kanaTexts, ...glosses].join(' | ').toLowerCase(),
+    };
+  });
+}
+
+function buildDictKanaIndex(words){
+  const idx = new Map();
+  words.forEach(w => {
+    (w.kana || []).forEach(k => {
+      if(!k.text) return;
+      if(!idx.has(k.text)) idx.set(k.text, []);
+      idx.get(k.text).push(w);
+    });
+  });
+  return idx;
+}
+
+async function loadDictionaryFromArrayBuffer(buffer, sourceName){
+  const text = decodeMaybeZip(buffer, sourceName);
+  const data = JSON.parse(text);
+  if(!data || !Array.isArray(data.words) || !data.words.length){
+    throw new Error('That file does not look like a jmdict-simplified JSON export (expected a "words" array).');
+  }
+  JMDICT = { words: data.words, tags: data.tags || {} };
+  JMDICT_BLOBS = buildDictSearchBlobs(JMDICT.words);
+  JMDICT_BY_KANA = buildDictKanaIndex(JMDICT.words);
+  jmdictSourceName = sourceName || 'dictionary file';
+  await window.storage.set(DICT_STORAGE_KEY, JSON.stringify({ sourceName: jmdictSourceName, count: JMDICT.words.length }), false).catch(()=>{});
+  updateDictUI();
+}
+
+async function autoLoadDefaultDictionary(){
+  setDictStatus('Trying to load a dictionary file from the same folder…');
+  let lastErr = null;
+  for(const name of DEFAULT_DICT_FILES){
+    try{
+      const res = await fetch(name, { cache:'no-store' });
+      if(!res.ok) continue;
+      const buffer = await res.arrayBuffer();
+      await loadDictionaryFromArrayBuffer(buffer, name);
+      return;
+    }catch(err){ lastErr = err; }
+  }
+  throw lastErr || new Error(`Could not find any of: ${DEFAULT_DICT_FILES.join(', ')} next to this file.`);
+}
+
+function unloadDictionary(){
+  JMDICT = null;
+  JMDICT_BLOBS = null;
+  JMDICT_BY_KANA = null;
+  jmdictSourceName = '';
+  window.storage.set(DICT_STORAGE_KEY, '', false).catch(()=>{});
+  updateDictUI();
+  document.getElementById('dict-lookup-results').innerHTML = '';
+}
+
+const JMDICT_GITHUB_API = 'https://api.github.com/repos/scriptin/jmdict-simplified/releases/latest';
+
+async function fetchLatestJmdictAsset(){
+  const res = await fetch(JMDICT_GITHUB_API, { headers: { 'Accept':'application/vnd.github+json' } });
+  if(!res.ok) throw new Error(`GitHub API returned ${res.status}. Try again later, or use the manual download link.`);
+  const data = await res.json();
+  const assets = data.assets || [];
+  // Prefer the small "common words only" build; fall back to the full dictionary.
+  const pick = (test) => assets.find(a => test(a.name.toLowerCase()));
+  const asset =
+    pick(n => n.includes('jmdict-eng-common') && n.endsWith('.json.zip')) ||
+    pick(n => n.startsWith('jmdict-eng-') && n.endsWith('.json.zip') && !n.includes('examples')) ||
+    pick(n => n.includes('jmdict-eng') && n.endsWith('.json.zip'));
+  if(!asset) throw new Error('Could not find a jmdict-eng .json.zip asset in the latest release.');
+  return asset; // { name, browser_download_url, size, ... }
+}
+
+async function saveBufferToDisk(buffer, suggestedName){
+  if(typeof window.showSaveFilePicker !== 'function') return false;
+  try{
+    const handle = await window.showSaveFilePicker({
+      suggestedName,
+      types: [{ description:'Dictionary file', accept: { 'application/zip': ['.zip'], 'application/json': ['.json'] } }],
+    });
+    const writable = await handle.createWritable();
+    await writable.write(buffer);
+    await writable.close();
+    return true;
+  }catch(err){
+    if(err && err.name === 'AbortError') return false; // user cancelled the save dialog
+    throw err;
+  }
+}
+
+function triggerBrowserDownload(url, name){
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.rel = 'noopener';
+  a.target = '_blank';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+async function downloadDictionaryAutomatically(){
+  const btn = document.getElementById('download-dict-btn');
+  try{
+    if(btn) btn.disabled = true;
+    setDictStatus('Checking GitHub for the latest JMdict release…');
+    const asset = await fetchLatestJmdictAsset();
+    const sizeMb = asset.size ? (asset.size / (1024*1024)).toFixed(1) + ' MB' : 'unknown size';
+    setDictStatus(`Downloading <strong>${escapeHtml(asset.name)}</strong> (${sizeMb})…`);
+
+    let buffer;
+    try{
+      const res = await fetch(asset.browser_download_url);
+      if(!res.ok) throw new Error(`Download failed (${res.status}).`);
+      buffer = await res.arrayBuffer();
+    }catch(fetchErr){
+      // Likely blocked by CORS on GitHub's asset host — fall back to a normal
+      // browser download (saves to the Downloads folder, no CORS involved).
+      triggerBrowserDownload(asset.browser_download_url, asset.name);
+      setDictStatus(`Your browser blocked an automatic in-page download, so <strong>${escapeHtml(asset.name)}</strong> was sent to your regular Downloads folder instead. Move it next to this app (or anywhere) and use <strong>Load dictionary file</strong> to finish, or place it beside the app and click <strong>Try same-folder dictionary</strong>.`);
+      return;
+    }
+
+    let savedToDisk = false;
+    try{
+      savedToDisk = await saveBufferToDisk(buffer, asset.name);
+    }catch(saveErr){ /* not fatal — we still load it into the running session */ }
+
+    await loadDictionaryFromArrayBuffer(buffer, asset.name);
+    if(savedToDisk){
+      setDictStatus(`Downloaded and saved <strong>${escapeHtml(asset.name)}</strong>. Using <strong>${JMDICT.words.length.toLocaleString()}</strong> dictionary entries. Next time, save it in the same folder as this app so “Try same-folder dictionary” can find it automatically.`);
+    }else{
+      updateDictUI();
+    }
+  }catch(err){
+    setDictStatus(`<strong>Dictionary download failed:</strong> ${escapeHtml(err.message || err)} — try the manual link on <a href="https://github.com/scriptin/jmdict-simplified/releases" target="_blank" rel="noopener">GitHub</a> instead.`);
+  }finally{
+    if(btn) btn.disabled = false;
+  }
+}
+
+function searchDictionary(query, limit=20){
+  if(!isDictLoaded() || !query) return [];
+  const q = query.toLowerCase().trim();
+  if(!q) return [];
+  const scored = [];
+  for(let i = 0; i < JMDICT.words.length; i++){
+    const b = JMDICT_BLOBS[i];
+    if(!b.blob.includes(q)) continue;
+    // rank: exact gloss match > gloss starts-with > any substring
+    let score = 3;
+    if(b.glosses.some(g => g.toLowerCase() === q)) score = 0;
+    else if(b.glosses.some(g => g.toLowerCase().startsWith(q))) score = 1;
+    else if(b.kanji.includes(query) || b.kana.includes(query)) score = 1;
+    scored.push({ i, score });
+    if(scored.length > 4000) break; // safety valve on pathological queries
+  }
+  scored.sort((a,b) => a.score - b.score);
+  return scored.slice(0, limit).map(s => JMDICT.words[s.i]);
+}
+
+function bestKanjiKana(word){
+  const kanjiList = word.kanji || [];
+  const kanaList = word.kana || [];
+  const kanji = (kanjiList.find(k => k.common) || kanjiList[0] || {}).text || '';
+  const kana = (kanaList.find(k => k.common) || kanaList[0] || {}).text || '';
+  return { kanji, kana };
+}
+
+function renderDictResults(words){
+  const box = document.getElementById('dict-lookup-results');
+  if(!words.length){ box.innerHTML = '<div class="empty" style="padding:12px; text-align:center; color:var(--ink-soft);">No matches.</div>'; return; }
+  box.innerHTML = words.map((w, idx) => {
+    const { kanji, kana } = bestKanjiKana(w);
+    const jp = kanji ? `${kanji}（${kana}）` : kana;
+    const glosses = [];
+    (w.sense || []).forEach(sn => (sn.gloss || []).forEach(g => { if(g.text && !glosses.includes(g.text)) glosses.push(g.text); }));
+    const pos = (w.sense && w.sense[0] && w.sense[0].partOfSpeech || []).map(code => (JMDICT.tags && JMDICT.tags[code]) || code).join(', ');
+    return `<div class="dict-result" data-idx="${idx}">
+      <span class="dict-jp">${escapeHtml(jp)}</span>
+      <span class="dict-en">${escapeHtml(glosses.slice(0,6).join(' / '))}</span>
+      ${pos ? `<span class="dict-tags">${escapeHtml(pos)}</span>` : ''}
+    </div>`;
+  }).join('');
+  box.querySelectorAll('.dict-result').forEach(el => {
+    el.addEventListener('click', () => applyDictWordToForm(words[Number(el.dataset.idx)]));
+  });
+}
+
+function applyDictWordToForm(word){
+  const { kanji, kana } = bestKanjiKana(word);
+  const glosses = [];
+  (word.sense || []).forEach(sn => (sn.gloss || []).forEach(g => { if(g.text && !glosses.includes(g.text)) glosses.push(g.text); }));
+  const pos = (word.sense && word.sense[0] && word.sense[0].partOfSpeech || []).map(code => (JMDICT.tags && JMDICT.tags[code]) || code).join('; ');
+  const kanjiStandard = kanji || kana; // fall back to kana itself when there's no kanji form
+  const kk = kanji ? `${kanji}（${kana}）` : kana;
+  document.getElementById('add-word-english').value = glosses.join(' / ');
+  document.getElementById('add-word-kana').value = kana;
+  document.getElementById('add-word-script').value = inferKanaScript(kana);
+  document.getElementById('add-word-kanji').value = kanjiStandard;
+  document.getElementById('add-word-kanji-kana').value = kk;
+  document.getElementById('add-word-romaji').value = kanaToRomaji(kana);
+  if(pos){
+    const notesEl = document.getElementById('add-word-notes');
+    notesEl.value = notesEl.value ? notesEl.value : pos;
+  }
+  document.getElementById('dict-lookup-results').innerHTML = '';
+  document.getElementById('dict-lookup-input').value = '';
+}
+
+function pickDictMatchForVocabItem(item){
+  if(!JMDICT_BY_KANA) return null;
+  const candidates = JMDICT_BY_KANA.get(item.k);
+  if(!candidates || !candidates.length) return null;
+  if(item.kj){
+    const kanjiMatch = candidates.find(w => (w.kanji||[]).some(k => k.text === item.kj));
+    if(kanjiMatch) return kanjiMatch;
+    // has kanji but none of the candidates share it — likely a different word
+    // sharing the same reading (e.g. にほん = 日本 vs 二本). Don't guess.
+    return null;
+  }
+  if(candidates.length === 1) return candidates[0];
+  // No kanji on our side to disambiguate. Only proceed if every candidate
+  // that HAS a kanji form agrees, or none of them have one at all (i.e. this
+  // reading isn't actually a kanji homograph — safe to use the first entry).
+  const kanjiSets = new Set(candidates.filter(w => (w.kanji||[]).length).map(w => w.kanji.map(k=>k.text).sort().join('|')));
+  if(kanjiSets.size > 1) return null; // genuine homophone with different words — skip
+  return candidates[0];
+}
+
+async function enrichVocabFromDictionary(){
+  if(!isDictLoaded()){
+    setVocabStatus('Load a dictionary first (see the Dictionary panel below), then try again.');
+    return;
+  }
+  if(!VOCAB.length){
+    setVocabStatus('Load some vocabulary first.');
+    return;
+  }
+  setVocabStatus('Scanning your vocabulary against the dictionary…');
+  let wordsUpdated = 0, meaningsAdded = 0, skippedAmbiguous = 0;
+  for(const item of VOCAB){
+    if(!item.k) continue;
+    const match = pickDictMatchForVocabItem(item);
+    if(!match){
+      if(JMDICT_BY_KANA.has(item.k) && JMDICT_BY_KANA.get(item.k).length > 1) skippedAmbiguous++;
+      continue;
+    }
+    const glosses = [];
+    (match.sense || []).forEach(sn => (sn.gloss || []).forEach(g => { if(g.text && !glosses.includes(g.text)) glosses.push(g.text); }));
+    if(!glosses.length) continue;
+    const existingAlts = splitAlts(item.e);
+    const existingNorm = existingAlts.map(a => normalizeEN(a));
+    const newOnes = glosses.filter(g => !existingNorm.includes(normalizeEN(g)));
+    if(!newOnes.length) continue;
+    item.e = [...existingAlts, ...newOnes].slice(0, 8).join(' / ');
+    wordsUpdated++;
+    meaningsAdded += newOnes.length;
+  }
+  if(wordsUpdated){
+    await saveVocabulary();
+    refreshVocabUI();
+  }
+  const ambiguousNote = skippedAmbiguous ? ` (${skippedAmbiguous} skipped — same reading, different kanji, couldn't tell which word you meant)` : '';
+  setVocabStatus(`Added <strong>${meaningsAdded}</strong> new meaning${meaningsAdded===1?'':'s'} across <strong>${wordsUpdated}</strong> word${wordsUpdated===1?'':'s'}.${ambiguousNote}`);
+}
+
+/* =================================================================== */
+
 function todaySourceTag(){
   const d = new Date();
   const dd = String(d.getDate()).padStart(2,'0');
@@ -1486,6 +1939,14 @@ function firstValue(...vals){
 function getPromptValue(item, mode){
   if(!item || !mode) return '';
   if(mode.promptField === 'kk') return firstValue(item.kk, computeKanjiKana(item.kj, item.k), item.kj, item.k);
+  if(mode.promptField === 'e'){
+    // Show one English meaning as the prompt. Cards with several meanings
+    // joined with "/" (e.g. "cow / cattle") rotate through all of them
+    // instead of always showing the first.
+    const alts = splitAlts(firstValue(item.e));
+    if(!alts.length) return '';
+    return alts[Math.floor(Math.random() * alts.length)];
+  }
   return firstValue(item[mode.promptField]);
 }
 
@@ -1511,7 +1972,7 @@ function renderWordLibrary(){
     items = items.filter(v => getProgress(v.id).status === statusFilter);
   }
   if(query){
-    items = items.filter(v => [v.c, v.e, v.k, v.kj, v.kk, v.r, v.notes, v.source].join(' ').toLowerCase().includes(query));
+    items = items.filter(v => [v.c, v.e, v.r, v.notes, v.source].join(' ').toLowerCase().includes(query));
   }
   const total = items.length;
   items = items.slice(0, 250);
@@ -2604,14 +3065,27 @@ function normalizeKana(s){
   return s.trim();
 }
 
+function splitUserEN(s){
+  return String(s)
+    .split(/\s*(?:\/|,|&|\band\b)\s*/i)
+    .map(x=>x.trim())
+    .filter(Boolean);
+}
 function checkAnswer(mode, item, userInput){
   const raw = getAnswerValue(item, mode);
   if(!raw) return false;
   const alts = splitAlts(raw);
   if(mode.answerField === 'e'){
-    const u = normalizeEN(userInput);
-    if(!u) return false;
-    return alts.some(a => normalizeEN(a) === u);
+    const uWhole = normalizeEN(userInput);
+    if(!uWhole) return false;
+    // accept a single alternative typed on its own
+    if(alts.some(a => normalizeEN(a) === uWhole)) return true;
+    // accept a combination of two or more alternatives (e.g. "cow / cattle", "cow and cattle")
+    const parts = splitUserEN(userInput).map(normalizeEN).filter(Boolean);
+    if(parts.length > 1 && parts.every(p => alts.some(a => normalizeEN(a) === p))){
+      return true;
+    }
+    return false;
   } else if(mode.answerField === 'k'){
     const u = normalizeKana(userInput);
     if(!u) return false;
@@ -2755,6 +3229,9 @@ async function init(){
   updateVocabStatus();
   document.getElementById('add-word-source').value = todaySourceTag();
 
+  updateDictUI();
+  autoLoadDefaultDictionary().catch(()=>{ /* optional: silently stay unloaded */ });
+
   await loadNinjaBest();
   renderNinjaHud();
   renderKanaDictionary();
@@ -2804,6 +3281,7 @@ async function init(){
     catch(err){ setVocabStatus(`<strong>Same-folder load failed:</strong> ${escapeHtml(err.message || err)} Use Load Excel file.`); }
   });
   document.getElementById('export-excel-btn').addEventListener('click', exportVocabularyExcel);
+  document.getElementById('enrich-vocab-btn').addEventListener('click', enrichVocabFromDictionary);
   document.getElementById('progress-connect-folder-btn').addEventListener('click', connectProgressFolder);
   document.getElementById('progress-save-file-btn').addEventListener('click', saveProgressFileManually);
   document.getElementById('progress-load-file-input').addEventListener('change', async (e)=>{
@@ -2815,6 +3293,35 @@ async function init(){
   document.getElementById('word-search').addEventListener('input', renderWordLibrary);
   document.getElementById('word-status-filter').addEventListener('change', renderWordLibrary);
   document.getElementById('add-word-form').addEventListener('submit', handleAddWord);
+
+  document.getElementById('dict-file-input').addEventListener('change', async (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    try{
+      setDictStatus(`Loading <strong>${escapeHtml(file.name)}</strong>…`);
+      const buffer = await file.arrayBuffer();
+      await loadDictionaryFromArrayBuffer(buffer, file.name);
+      e.target.value = '';
+    }catch(err){
+      setDictStatus(`<strong>Dictionary load failed:</strong> ${escapeHtml(err.message || err)}`);
+    }
+  });
+  document.getElementById('auto-load-dict-btn').addEventListener('click', async ()=>{
+    try{ await autoLoadDefaultDictionary(); }
+    catch(err){ setDictStatus(`<strong>Same-folder dictionary load failed:</strong> ${escapeHtml(err.message || err)}`); }
+  });
+  document.getElementById('clear-dict-btn').addEventListener('click', unloadDictionary);
+  document.getElementById('download-dict-btn').addEventListener('click', downloadDictionaryAutomatically);
+  document.getElementById('dict-lookup-btn').addEventListener('click', ()=>{
+    const q = document.getElementById('dict-lookup-input').value;
+    renderDictResults(searchDictionary(q));
+  });
+  document.getElementById('dict-lookup-input').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      renderDictResults(searchDictionary(e.target.value));
+    }
+  });
 
   document.getElementById('begin-btn').addEventListener('click', startSession);
   document.getElementById('change-settings-btn').addEventListener('click', backToSetup);

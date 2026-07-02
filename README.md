@@ -2,10 +2,10 @@
 
 A browser-based Japanese study app with two main modes:
 
-- **Vocabulary Drill** — practice Japanese vocabulary from an Excel spreadsheet.
+- **Vocabulary Drill** — practice Japanese vocabulary from an Excel spreadsheet, optionally backed by an offline Japanese-English dictionary.
 - **Kana Ninja** — type romaji quickly as kana slide across the screen.
 
-The app is a single HTML file designed to run locally in a browser, with optional Excel vocabulary loading and file-based progress backup.
+The app is a single HTML file designed to run locally in a browser, with optional Excel vocabulary loading, optional offline dictionary support, and file-based progress backup.
 
 ## Disclaimer
 
@@ -27,13 +27,20 @@ This project was **mostly vibe coded**. It works for the intended personal study
   - Kanji + kana → Romaji
 - Tracks learning progress with statuses such as new, learning, known, and failing.
 - Includes an easy mode that can show romaji hints for selected prompt types.
-- Lets you browse known words.
-- Lets you add new vocabulary manually.
+- Lets you browse known words, searching by **English or romaji** (kana/kanji are intentionally excluded from this search so you can look words up by what you actually remember).
+- Lets you add new vocabulary manually, with optional dictionary-assisted lookup (see below).
 - Auto-fills the source field for new entries using:
 
 ```text
 DDMMYYYY - game version
 ```
+
+#### Multiple English meanings, handled properly
+
+Words with more than one English meaning (e.g. `cow / cattle`) are supported end-to-end:
+
+- When English is the **prompt**, the app shows one meaning at a time, chosen at random from the full list — so repeated study cycles through all of them instead of always showing the first.
+- When English is the **answer**, typing any single valid meaning is accepted, and so is typing a **combination** of meanings joined by `/`, a comma, `&`, or "and" (e.g. `cow / cattle` or `cow and cattle`). Every piece you type has to match a real meaning for that card — random extra words still count as wrong.
 
 ### Excel Vocabulary Support
 
@@ -53,6 +60,20 @@ Source(s)
 ```
 
 You can load the spreadsheet manually from the app interface. When opened from a normal local file, browsers may block automatic same-folder loading, so manual loading is the safest option.
+
+**Add meanings from dictionary** — with a dictionary loaded (see below), this button scans every word in your spreadsheet by its kana reading, looks it up, and appends any English meanings you're missing. It's homophone-aware: if two different words share a reading but have different kanji (e.g. 日本 "Japan" vs. 二本 "two long thin objects", both にほん), it only merges meanings from the entry that actually matches your word's kanji, and skips ambiguous cases entirely rather than guessing.
+
+### Optional Offline Dictionary (JMdict)
+
+The app can optionally load [JMdict](https://github.com/scriptin/jmdict-simplified) — a free, open-license Japanese-English dictionary — to assist with adding and completing vocabulary. This is entirely optional; the app works fully without it.
+
+- **⬇ Download dictionary** — fetches the current JMdict "common words" release directly from GitHub, offers to save it next to the app via your browser's save dialog, and loads it into the current session immediately. No manual download required in the happy path.
+- **Load dictionary file** — manually load a `.json` or `.json.zip` JMdict-simplified file (handy if the automatic download is blocked by your browser, or if you want the full dictionary instead of the common-words subset).
+- **Try same-folder dictionary** — looks for `jmdict-eng.json`, `jmdict-eng.json.zip`, `jmdict-eng-common.json`, or `jmdict-eng-common.json.zip` next to the app, same pattern as the Excel auto-load. Tried automatically on every page load.
+- **Unload dictionary** — clears it from memory.
+- Everything runs locally in the browser once downloaded — no data is ever sent anywhere, and the game works fully offline after the dictionary file is in place.
+
+With a dictionary loaded, the "Add a new word" form gains a **Look up** search box: type an English word, pick a result, and it auto-fills Kana, Kana script, Kanji, Kanji + kana, and Romaji (romaji is generated from the kana with a Hepburn-style converter — good for most words, but a handful of irregular readings may need a manual tweak). You can edit any field before saving.
 
 ### Progress Saving
 
@@ -99,10 +120,11 @@ A typical repo layout could look like this:
 ├── japanese_flashcards_excel_loader.html
 ├── japanese_vocabulary_by_category.xlsx
 ├── japanese_flashcards_progress.json
+├── jmdict-eng-common.json.zip   (optional — enables offline dictionary lookup)
 └── README.md
 ```
 
-The app looks for `japanese_vocabulary_by_category.xlsx` by name (via the "Try same-folder Excel" button), so keep that filename as-is. You can rename the HTML file to `index.html` if you want GitHub Pages or a simple static server to open it more easily — just update any links/shortcuts accordingly.
+The app looks for `japanese_vocabulary_by_category.xlsx` by name (via the "Try same-folder Excel" button), so keep that filename as-is. The same applies to the optional dictionary file — see the filenames listed above. You can rename the HTML file to `index.html` if you want GitHub Pages or a simple static server to open it more easily — just update any links/shortcuts accordingly.
 
 ## Running Locally
 
@@ -110,7 +132,7 @@ The app looks for `japanese_vocabulary_by_category.xlsx` by name (via the "Try s
 
 Double-click the HTML file and open it in your browser.
 
-This is the simplest method, but some browser features may be limited, especially automatic same-folder Excel loading.
+This is the simplest method, but some browser features may be limited, especially automatic same-folder Excel/dictionary loading.
 
 ### Option 2: Use a local server
 
@@ -132,10 +154,11 @@ This usually gives better results for loading files from the same folder.
 
 1. Open the HTML file in your browser.
 2. Load your Excel vocabulary file.
-3. Choose categories and flashcard modes.
-4. Start practicing.
-5. Use the progress save/load tools to preserve your study history.
-6. Use Kana Ninja for kana speed practice.
+3. (Optional) Download or load a JMdict dictionary file to enable lookup-assisted word entry and the "Add meanings from dictionary" button.
+4. Choose categories and flashcard modes.
+5. Start practicing.
+6. Use the progress save/load tools to preserve your study history.
+7. Use Kana Ninja for kana speed practice.
 
 ## Saving Progress
 
@@ -164,12 +187,16 @@ or served from:
 http://localhost:8000
 ```
 
+This also affects the dictionary download button: some browsers/hosts block in-page downloads from GitHub's release host due to CORS restrictions. When that happens, the app automatically falls back to a normal browser download (the file lands in your Downloads folder), and you'll need to move it next to the app manually.
+
 ## Tech
 
 - HTML
 - CSS
 - JavaScript
-- Excel parsing/export through browser-side spreadsheet handling
+- Excel parsing/export through browser-side spreadsheet handling ([SheetJS](https://sheetjs.com/))
+- Client-side zip decompression for dictionary files ([fflate](https://github.com/101arrowz/fflate))
+- Optional dictionary data from [JMdict-simplified](https://github.com/scriptin/jmdict-simplified) (JMdict is a free, Creative Commons-licensed Japanese-English dictionary)
 - No backend required
 
 ## Future Ideas
@@ -183,7 +210,13 @@ Possible improvements:
 - More detailed progress analytics
 - GitHub Pages setup
 - Automated tests for vocabulary parsing and answer checking
+- Duplicate/conflict checker for the vocabulary spreadsheet (catch homophone mix-ups automatically)
+- Bulk word import from the dictionary (add many new entries from a pasted English word list at once)
+- Spaced repetition scheduling instead of pure random card selection
+- Typo-tolerant answer checking for kana/romaji
 
 ## License
 
 No license has been selected yet. Add one before distributing or accepting contributions.
+
+Note: if you distribute a JMdict data file alongside this app, JMdict itself is licensed separately by the EDRDG under a Creative Commons Attribution-ShareAlike license — see [the JMdict project page](http://www.edrdg.org/jmdict/j_jmdict.html) for details and attribution requirements.
