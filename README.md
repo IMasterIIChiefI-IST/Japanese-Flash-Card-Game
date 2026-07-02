@@ -233,4 +233,4 @@ Possible improvements:
 
 ## License
 
-No license has been selected yet. Add one before distributing or accepting contributions.
+  GNU AFFERO GENERAL PUBLIC LICENSE 3.0
