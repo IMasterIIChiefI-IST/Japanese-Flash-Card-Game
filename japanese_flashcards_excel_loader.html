@@ -862,6 +862,18 @@
   .dict-lookup-results-standalone .dict-result{ cursor: default; }
   .dict-lookup-results-standalone .dict-result:hover{ background: transparent; }
 
+  /* ---------- Grammar Guide tab ---------- */
+  #grammar-screen{ display:none; }
+  #grammar-viewer-panel{ padding-bottom: 18px; }
+  .grammar-pdf-frame{
+    display:block;
+    width: 100%;
+    height: clamp(420px, 75vh, 900px);
+    border: 1px solid var(--paper-line);
+    border-radius: 12px;
+    background: #fff;
+  }
+
   /* ---------- Kana Dictionary ---------- */
   #kana-dictionary-screen{ display:none; }
   .kana-dictionary-intro{
@@ -968,6 +980,7 @@
     <button id="tab-ninja"><span class="jp">かなニンジャ</span>Kana Ninja</button>
     <button id="tab-dictionary"><span class="jp">辞書</span>Dictionary</button>
     <button id="tab-kana-dictionary"><span class="jp">かな表</span>Kana Dictionary</button>
+    <button id="tab-grammar"><span class="jp">文法</span>Grammar Guide</button>
   </nav>
 
   <div class="panel">
@@ -1045,6 +1058,36 @@
         <span><b>Right:</b> katakana</span>
         <span><b>Bottom:</b> romaji</span>
       </div>
+    </div>
+  </div>
+
+  <!-- ===================== GRAMMAR GUIDE ===================== -->
+  <div id="grammar-screen">
+    <div class="panel">
+      <h2><span class="eyebrow">文法</span> Japanese Grammar Guide</h2>
+      <p class="progress-help">
+        The basic rules of Japanese grammar, from Tae Kim's free <strong>Guide to Japanese</strong> — particles, verb conjugation, sentence structure, and more, all in one PDF. Download it once and it's saved in this browser for fully offline use — no internet needed after that.
+      </p>
+      <div class="data-actions">
+        <button class="btn btn-primary" id="download-grammar-btn" type="button" style="width:auto; margin-top:0;">⬇ Download guide for offline use</button>
+        <button class="btn btn-ghost" id="load-grammar-file-btn" type="button">📂 Load PDF file</button>
+        <input type="file" id="grammar-file-input" accept="application/pdf,.pdf" style="display:none;">
+        <button class="btn btn-ghost" id="remove-grammar-btn" type="button" style="display:none;">🗑 Remove offline copy</button>
+      </div>
+      <div class="data-actions" style="margin-top:8px;">
+        <a class="btn btn-ghost" style="text-decoration:none; display:inline-flex; align-items:center;" href="https://www.guidetojapanese.org/grammar_guide.pdf" target="_blank" rel="noopener">↗ Open live copy online</a>
+        <a class="btn btn-ghost" style="text-decoration:none; display:inline-flex; align-items:center;" href="https://www.guidetojapanese.org/" target="_blank" rel="noopener">About this guide</a>
+      </div>
+      <div class="dict-lookup-row" style="margin-top:14px;">
+        <input type="text" id="grammar-search-input" placeholder="Search the guide… e.g. “particles” or “te-form”">
+        <button class="btn btn-ghost" id="grammar-search-btn" type="button" style="width:auto; margin-top:0;">Search</button>
+      </div>
+      <div class="vocab-status" id="grammar-status">No offline copy yet. Click <strong>Download guide for offline use</strong> to save it in this browser, or <strong>Load PDF file</strong> if you already have a copy on disk.</div>
+    </div>
+
+    <div class="panel" id="grammar-viewer-panel">
+      <iframe id="grammar-pdf-frame" class="grammar-pdf-frame" title="Japanese Grammar Guide PDF" loading="lazy"></iframe>
+      <div class="progress-help" style="margin-top:10px;">Once downloaded, the guide is stored in this browser and loads instantly with no network connection required — even offline or on a plane. If it doesn't display inline on your device, use <strong>Open live copy online</strong> above (requires internet) — your browser or PDF app's own search still works there.</div>
     </div>
   </div>
 
@@ -2264,7 +2307,10 @@ let ninjaGroups = new Set(['base','dakuten','yoon','sokuon']);
 let ninjaEasyMode = false;
 let ninjaInfiniteLives = false;
 let ninjaHintThreshold = 0.5;   // fraction of the fall (0 = top, 1 = bottom) where the hint appears
-let ninjaSpeedLevel = 2;        // 1 (slow) – 10 (fast), set from the setup slider
+let ninjaSpeedLevel = 2;        // 1 (slow) – 5 (fast), set from the setup slider.
+                                 // Controls only the starting FALL speed of the
+                                 // kana — how often new kana spawn is a separate,
+                                 // fixed pace that ramps up on its own as you score.
 let ninjaMaxColumns = 3;        // number of lanes kana can fall in
 let ninjaMaxPerColumn = 2;      // max kana allowed falling in a single lane at once
 let ninjaLastValidInput = '';   // last input value confirmed to still match a possible falling kana
@@ -2282,13 +2328,11 @@ let ninjaFallDuration = 15000; // ms to cross the arena at current difficulty
 let ninjaLastTs = null;
 
 function speedLevelToFallDuration(level){
-  // level 1 -> 40000ms (slow), level 10 -> 26000ms (fast)
-  return 40000 - (level - 1) * (14000 / 9);
+  // level 1 -> 40000ms (slow), level 5 -> 26000ms (fast). This is the ONLY
+  // thing the Speed slider affects: how fast kana fall when the round starts.
+  return 40000 - (level - 1) * (14000 / 4);
 }
-function speedLevelToSpawnInterval(level){
-  // level 1 -> 2200ms between spawns, level 10 -> 700ms
-  return 2200 - (level - 1) * (1500 / 9);
-}
+const NINJA_BASE_SPAWN_INTERVAL = 1700; // ms between spawns at the start of every round, regardless of the Speed slider
 
 async function loadNinjaBest(){
   try{
@@ -2574,7 +2618,7 @@ function startNinjaGame(){
   ninjaScore = 0;
   ninjaLives = 3;
   ninjaLastValidInput = '';
-  ninjaSpawnInterval = speedLevelToSpawnInterval(ninjaSpeedLevel);
+  ninjaSpawnInterval = NINJA_BASE_SPAWN_INTERVAL;
   ninjaFallDuration = speedLevelToFallDuration(ninjaSpeedLevel);
   ninjaSpawnFloor = Math.max(500, ninjaSpawnInterval * 0.5);
   ninjaFallFloor = Math.max(3600, ninjaFallDuration * 0.4);
@@ -2616,11 +2660,13 @@ function switchTab(tab){
   const ninjaActiveTab = tab === 'ninja';
   const dictActive = tab === 'dictionary';
   const kanaDictActive = tab === 'kana-dictionary';
+  const grammarActive = tab === 'grammar';
 
   document.getElementById('tab-vocab').classList.toggle('active', vocabActive);
   document.getElementById('tab-ninja').classList.toggle('active', ninjaActiveTab);
   document.getElementById('tab-dictionary').classList.toggle('active', dictActive);
   document.getElementById('tab-kana-dictionary').classList.toggle('active', kanaDictActive);
+  document.getElementById('tab-grammar').classList.toggle('active', grammarActive);
   document.getElementById('ledger').style.display = vocabActive ? '' : 'none';
 
   if(!ninjaActiveTab) stopNinjaIfRunning();
@@ -2631,12 +2677,193 @@ function switchTab(tab){
   document.getElementById('ninja-game-screen').style.display = 'none';
   document.getElementById('dictionary-screen').style.display = dictActive ? 'block' : 'none';
   document.getElementById('kana-dictionary-screen').style.display = kanaDictActive ? 'block' : 'none';
+  document.getElementById('grammar-screen').style.display = grammarActive ? 'block' : 'none';
   document.querySelector('footer.app-footer').style.display = vocabActive ? '' : 'none';
 
   if(kanaDictActive) renderKanaDictionary();
   if(dictActive) updateDictUI();
+  if(grammarActive) loadGrammarGuideIfNeeded();
 }
 // ==================== /KANA NINJA ====================
+
+// ---------------- Grammar Guide (Tae Kim's PDF, downloaded once and stored fully offline) ----------------
+const GRAMMAR_PDF_URL = 'https://www.guidetojapanese.org/grammar_guide.pdf';
+const GRAMMAR_DB_NAME = 'jp-flashcards-grammar-db';
+const GRAMMAR_DB_STORE = 'blobs';
+const GRAMMAR_META_KEY = 'flashcard-grammar-pdf-meta';
+
+let grammarGuideChecked = false; // have we checked local storage for an offline copy this session?
+let grammarPdfBlobUrl = '';      // object URL for the currently displayed offline copy
+let grammarPdfBytes = 0;         // size in bytes of the currently loaded offline copy
+
+function grammarDbOpen(){
+  return new Promise((resolve, reject)=>{
+    if(!('indexedDB' in window)) return reject(new Error('IndexedDB is not available in this browser.'));
+    const req = indexedDB.open(GRAMMAR_DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(GRAMMAR_DB_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error || new Error('Could not open the offline guide database.'));
+  });
+}
+
+async function saveGrammarPdfToDb(buffer){
+  const db = await grammarDbOpen();
+  await new Promise((resolve, reject)=>{
+    const tx = db.transaction(GRAMMAR_DB_STORE, 'readwrite');
+    tx.objectStore(GRAMMAR_DB_STORE).put(buffer, 'pdf');
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+async function readGrammarPdfFromDb(){
+  try{
+    const db = await grammarDbOpen();
+    const buffer = await new Promise((resolve, reject)=>{
+      const tx = db.transaction(GRAMMAR_DB_STORE, 'readonly');
+      const req = tx.objectStore(GRAMMAR_DB_STORE).get('pdf');
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return buffer || null;
+  }catch(e){ return null; }
+}
+
+async function deleteGrammarPdfFromDb(){
+  try{
+    const db = await grammarDbOpen();
+    await new Promise((resolve, reject)=>{
+      const tx = db.transaction(GRAMMAR_DB_STORE, 'readwrite');
+      tx.objectStore(GRAMMAR_DB_STORE).delete('pdf');
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  }catch(e){ /* not fatal */ }
+}
+
+async function saveGrammarPdfMeta(meta){
+  try{ await window.storage.set(GRAMMAR_META_KEY, JSON.stringify(meta), false); }catch(e){}
+}
+async function loadGrammarPdfMeta(){
+  try{
+    const res = await window.storage.get(GRAMMAR_META_KEY, false);
+    return res && res.value ? JSON.parse(res.value) : null;
+  }catch(e){ return null; }
+}
+async function clearGrammarPdfMeta(){
+  try{ await window.storage.set(GRAMMAR_META_KEY, '', false); }catch(e){}
+}
+
+function setGrammarStatus(html){
+  const el = document.getElementById('grammar-status');
+  if(el) el.innerHTML = html;
+}
+
+function isGrammarPdfLoaded(){ return !!grammarPdfBlobUrl; }
+
+function updateGrammarUI(){
+  const removeBtn = document.getElementById('remove-grammar-btn');
+  if(removeBtn) removeBtn.style.display = isGrammarPdfLoaded() ? '' : 'none';
+}
+
+// Renders an in-memory ArrayBuffer into the PDF viewer entirely offline — no
+// network request is made, since the iframe points at a local blob: URL.
+function displayGrammarPdfBuffer(buffer, searchTerm){
+  if(grammarPdfBlobUrl) URL.revokeObjectURL(grammarPdfBlobUrl);
+  const blob = new Blob([buffer], { type:'application/pdf' });
+  grammarPdfBlobUrl = URL.createObjectURL(blob);
+  grammarPdfBytes = buffer.byteLength;
+  const q = (searchTerm || '').trim();
+  document.getElementById('grammar-pdf-frame').src = grammarPdfBlobUrl + (q ? `#search=${encodeURIComponent(q)}` : '');
+  updateGrammarUI();
+}
+
+// Called on tab switch / init. Only ever reads from local storage — never
+// fetches the PDF from the network automatically.
+async function loadGrammarGuideIfNeeded(){
+  if(grammarGuideChecked) return;
+  grammarGuideChecked = true;
+  const buffer = await readGrammarPdfFromDb();
+  if(buffer){
+    displayGrammarPdfBuffer(buffer);
+    const meta = await loadGrammarPdfMeta();
+    const sizeMb = (buffer.byteLength / (1024*1024)).toFixed(1);
+    setGrammarStatus(`Offline copy loaded${meta && meta.name ? ` — <strong>${escapeHtml(meta.name)}</strong>` : ''} (${sizeMb} MB). Works with no internet connection.`);
+  }else{
+    setGrammarStatus(`No offline copy yet. Click <strong>Download guide for offline use</strong> to save it in this browser, or <strong>Load PDF file</strong> if you already have a copy on disk.`);
+  }
+}
+
+// One-time download: fetches the PDF, stores it in IndexedDB, and displays
+// it from that local copy. After this, the guide never needs the network
+// again (unless you click Remove offline copy and download again later).
+async function downloadGrammarGuide(){
+  const btn = document.getElementById('download-grammar-btn');
+  try{
+    if(btn) btn.disabled = true;
+    setGrammarStatus('Downloading the grammar guide (one-time, ~a few MB)…');
+    const res = await fetch(GRAMMAR_PDF_URL);
+    if(!res.ok) throw new Error(`Download failed (${res.status}).`);
+    const buffer = await res.arrayBuffer();
+    await saveGrammarPdfToDb(buffer);
+    await saveGrammarPdfMeta({ name:'grammar_guide.pdf', size:buffer.byteLength, savedAt: Date.now() });
+    grammarGuideChecked = true;
+    displayGrammarPdfBuffer(buffer);
+    const sizeMb = (buffer.byteLength / (1024*1024)).toFixed(1);
+    setGrammarStatus(`Downloaded and saved <strong>grammar_guide.pdf</strong> (${sizeMb} MB) for offline use. It will load instantly from now on, even with no internet connection.`);
+  }catch(err){
+    setGrammarStatus(`<strong>Automatic download failed:</strong> ${escapeHtml(err.message || err)} — click <strong>Open live copy online</strong> above, save the PDF from your browser, then use <strong>Load PDF file</strong> here to store it offline.`);
+  }finally{
+    if(btn) btn.disabled = false;
+  }
+}
+
+// Manual import: load a PDF the user already has on disk (e.g. saved from
+// the browser after a blocked automatic download) and store it offline.
+async function loadGrammarPdfFromFile(file){
+  try{
+    setGrammarStatus(`Loading <strong>${escapeHtml(file.name)}</strong>…`);
+    const buffer = await file.arrayBuffer();
+    await saveGrammarPdfToDb(buffer);
+    await saveGrammarPdfMeta({ name:file.name, size:buffer.byteLength, savedAt: Date.now() });
+    grammarGuideChecked = true;
+    displayGrammarPdfBuffer(buffer);
+    const sizeMb = (buffer.byteLength / (1024*1024)).toFixed(1);
+    setGrammarStatus(`Loaded and saved <strong>${escapeHtml(file.name)}</strong> (${sizeMb} MB) for offline use. It will load instantly from now on, even with no internet connection.`);
+  }catch(err){
+    setGrammarStatus(`<strong>Could not load that file:</strong> ${escapeHtml(err.message || err)}`);
+  }
+}
+
+async function removeGrammarGuide(){
+  if(grammarPdfBlobUrl){ URL.revokeObjectURL(grammarPdfBlobUrl); grammarPdfBlobUrl = ''; }
+  grammarPdfBytes = 0;
+  document.getElementById('grammar-pdf-frame').src = '';
+  await deleteGrammarPdfFromDb();
+  await clearGrammarPdfMeta();
+  updateGrammarUI();
+  setGrammarStatus(`Offline copy removed. Click <strong>Download guide for offline use</strong> to save it again, or <strong>Load PDF file</strong> to import one from disk.`);
+}
+
+function searchGrammarGuide(term){
+  const q = (term || '').trim();
+  if(!isGrammarPdfLoaded()){
+    setGrammarStatus(`Download or load the guide first, then search it below.`);
+    return;
+  }
+  const frame = document.getElementById('grammar-pdf-frame');
+  // Most built-in browser PDF viewers (Chrome/Edge's PDFium and Firefox's
+  // pdf.js) understand a #search= fragment and will jump straight to the
+  // first match with every occurrence highlighted — this works on the local
+  // blob: URL just as well as it did on a remote one, with no network call.
+  frame.src = grammarPdfBlobUrl + (q ? `#search=${encodeURIComponent(q)}` : '');
+  setGrammarStatus(q
+    ? `Jumping to "<strong>${escapeHtml(q)}</strong>" in the guide below — use the viewer's arrows to step through the rest of the matches.`
+    : `Searching jumps the viewer below to the first match and highlights every occurrence — use the viewer's own arrows to step through the rest, or press <strong>Ctrl/Cmd+F</strong> inside it.`);
+}
 
 // ---------------- global display settings (font + script colors) ----------------
 let jpFont = "'Shippori Mincho', serif";
@@ -3420,6 +3647,25 @@ async function init(){
     if(e.key === 'Enter'){ e.preventDefault(); runDictSearch(); }
   });
 
+  // ---- Grammar Guide tab ----
+  document.getElementById('grammar-search-btn').addEventListener('click', ()=>{
+    searchGrammarGuide(document.getElementById('grammar-search-input').value);
+  });
+  document.getElementById('grammar-search-input').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); searchGrammarGuide(e.target.value); }
+  });
+  document.getElementById('download-grammar-btn').addEventListener('click', downloadGrammarGuide);
+  document.getElementById('load-grammar-file-btn').addEventListener('click', ()=>{
+    document.getElementById('grammar-file-input').click();
+  });
+  document.getElementById('grammar-file-input').addEventListener('change', async (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    await loadGrammarPdfFromFile(file);
+    e.target.value = '';
+  });
+  document.getElementById('remove-grammar-btn').addEventListener('click', removeGrammarGuide);
+
   document.getElementById('begin-btn').addEventListener('click', startSession);
   document.getElementById('change-settings-btn').addEventListener('click', backToSetup);
   document.getElementById('reset-btn').addEventListener('click', resetProgress);
@@ -3437,6 +3683,7 @@ async function init(){
   document.getElementById('tab-ninja').addEventListener('click', ()=>switchTab('ninja'));
   document.getElementById('tab-dictionary').addEventListener('click', ()=>switchTab('dictionary'));
   document.getElementById('tab-kana-dictionary').addEventListener('click', ()=>switchTab('kana-dictionary'));
+  document.getElementById('tab-grammar').addEventListener('click', ()=>switchTab('grammar'));
 
   document.getElementById('ninja-hiragana').addEventListener('change', (e)=>{
     if(e.target.checked) ninjaScripts.add('hiragana'); else ninjaScripts.delete('hiragana');
