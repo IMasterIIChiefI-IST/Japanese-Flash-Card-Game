@@ -234,5 +234,3 @@ Possible improvements:
 ## License
 
 No license has been selected yet. Add one before distributing or accepting contributions.
-
-Note: if you distribute a JMdict data file alongside this app, JMdict itself is licensed separately by the EDRDG under a Creative Commons Attribution-ShareAlike license — see [the JMdict project page](http://www.edrdg.org/jmdict/j_jmdict.html) for details and attribution requirements.
