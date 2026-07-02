@@ -5,6 +5,8 @@ A browser-based Japanese study app with two main modes:
 - **Vocabulary Drill** — practice Japanese vocabulary from an Excel spreadsheet, optionally backed by an offline Japanese-English dictionary.
 - **Kana Ninja** — type romaji quickly as kana slide across the screen.
 
+It also includes a **Grammar Guide** tab (Tae Kim's *Guide to Japanese*, downloadable for fully offline reading) and a standalone dictionary lookup / kana reference tab.
+
 The app is a single HTML file designed to run locally in a browser, with optional Excel vocabulary loading, optional offline dictionary support, and file-based progress backup.
 
 ## Disclaimer
@@ -75,6 +77,17 @@ The app can optionally load [JMdict](https://github.com/scriptin/jmdict-simplifi
 
 With a dictionary loaded, the "Add a new word" form gains a **Look up** search box: type an English word, pick a result, and it auto-fills Kana, Kana script, Kanji, Kanji + kana, and Romaji (romaji is generated from the kana with a Hepburn-style converter — good for most words, but a handful of irregular readings may need a manual tweak). You can edit any field before saving.
 
+### Grammar Guide (offline PDF)
+
+The **Grammar Guide** tab embeds Tae Kim's free *Guide to Japanese* — particles, verb conjugation, sentence structure, and more — as a searchable PDF, using the same "download once, then fully offline" pattern as the dictionary:
+
+- **⬇ Download guide for offline use** — fetches the PDF once and saves it in the browser's local IndexedDB storage. Nothing is fetched from the network automatically; the guide only downloads when you click this button.
+- **📂 Load PDF file** — manually import a PDF you already have on disk (handy if the automatic download is blocked by CORS — see [Notes About Browser Limitations](#notes-about-browser-limitations)).
+- **🗑 Remove offline copy** — clears the stored PDF from this browser.
+- **↗ Open live copy online** — optional link to view the guide directly on [guidetojapanese.org](https://www.guidetojapanese.org/) without downloading; requires an internet connection.
+
+Once downloaded or loaded, the guide is stored locally and reopens instantly on future visits with **no network connection required at all** — including when the app is opened as a plain `file://` page with no server. The search box jumps the embedded viewer to the first match of a term (e.g. "particles" or "te-form"); use the viewer's own arrows or `Ctrl/Cmd+F` to step through the rest.
+
 ### Progress Saving
 
 The app supports several ways to preserve progress:
@@ -124,7 +137,7 @@ A typical repo layout could look like this:
 └── README.md
 ```
 
-The app looks for `japanese_vocabulary_by_category.xlsx` by name (via the "Try same-folder Excel" button), so keep that filename as-is. The same applies to the optional dictionary file — see the filenames listed above. You can rename the HTML file to `index.html` if you want GitHub Pages or a simple static server to open it more easily — just update any links/shortcuts accordingly.
+The app looks for `japanese_vocabulary_by_category.xlsx` by name (via the "Try same-folder Excel" button), so keep that filename as-is. The same applies to the optional dictionary file — see the filenames listed above. The Grammar Guide PDF is *not* loaded from a same-folder file — it's stored inside the browser itself (IndexedDB) after you click **Download guide for offline use** or **Load PDF file**, so no extra file needs to sit next to the app for it. You can rename the HTML file to `index.html` if you want GitHub Pages or a simple static server to open it more easily — just update any links/shortcuts accordingly.
 
 ## Running Locally
 
@@ -155,10 +168,11 @@ This usually gives better results for loading files from the same folder.
 1. Open the HTML file in your browser.
 2. Load your Excel vocabulary file.
 3. (Optional) Download or load a JMdict dictionary file to enable lookup-assisted word entry and the "Add meanings from dictionary" button.
-4. Choose categories and flashcard modes.
-5. Start practicing.
-6. Use the progress save/load tools to preserve your study history.
-7. Use Kana Ninja for kana speed practice.
+4. (Optional) Visit the Grammar Guide tab and click **Download guide for offline use** (or **Load PDF file**) to save Tae Kim's guide for offline reading.
+5. Choose categories and flashcard modes.
+6. Start practicing.
+7. Use the progress save/load tools to preserve your study history.
+8. Use Kana Ninja for kana speed practice.
 
 ## Saving Progress
 
@@ -189,6 +203,8 @@ http://localhost:8000
 
 This also affects the dictionary download button: some browsers/hosts block in-page downloads from GitHub's release host due to CORS restrictions. When that happens, the app automatically falls back to a normal browser download (the file lands in your Downloads folder), and you'll need to move it next to the app manually.
 
+The Grammar Guide download button can hit the same kind of CORS restriction when fetching from guidetojapanese.org. If the automatic download fails, use **Open live copy online** to view/save the PDF manually, then use **Load PDF file** in the Grammar Guide tab to store it offline — it only has to be done once.
+
 ## Tech
 
 - HTML
@@ -218,3 +234,5 @@ Possible improvements:
 ## License
 
 No license has been selected yet. Add one before distributing or accepting contributions.
+
+Note: if you distribute a JMdict data file alongside this app, JMdict itself is licensed separately by the EDRDG under a Creative Commons Attribution-ShareAlike license — see [the JMdict project page](http://www.edrdg.org/jmdict/j_jmdict.html) for details and attribution requirements.
